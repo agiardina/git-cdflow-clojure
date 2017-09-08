@@ -6,17 +6,8 @@
 (defn get-branch-name-from-ref [ref]
   (str/replace-first (.getName ref) "refs/heads/" ""))
 
-;(defn get-branches-as-tree [repo]
-;  (let [branches (branch-list repo)]))
-
 (defn branch-list [repo]
   (map get-branch-name-from-ref (git/git-branch-list (git/load-repo repo))))
-
-(def branches '("development" "feature/prova" "feature/test" "master" "feature/subfeature/casa"))
-
-;(vector->adj ["root" "feature" "prova"] [])
-
-(def a '(("root" "development") ("root" "feature") ("feature" "prova") ("feature" "prova2") ("feature" "test") ("test" "prova3")))
 
 (defn ->branch
   [id kids]
@@ -38,18 +29,18 @@
       (->leaf node))))
 
 (defn ->adj [vec adj]
-  (if (= 2(count vec))
+  (if (= 2 (count vec))
     (conj adj (lazy-seq vec))
     (->adj (next vec) (conj adj (take 2 vec)))))
 
-(def branches ["root/master" "root/development" "root/feature/prova" "root/feature/prova2" "root/feature/subfeatures/prova3"])
+(defn branch-tree [repo]
+  (let [branches     (map #(str "root/" %) (branch-list repo))
+        vec-branches (map #(str/split % #"/") branches)
+        adj-branches (map #(->adj % []) vec-branches)
+        adj-list     (distinct (apply concat adj-branches))]
+    (->tree adj-list "root")))
 
-(let [vec-branches (map #(str/split % #"/") branches)
-      adj-branches (map #(->adj % []) vec-branches)
-      adj-list (distinct(apply concat adj-branches))]
-  (->tree adj-list "root"))
+(def testing-repo "/Users/agiardina/dev/uhc-edq-quote-service")
 
-
-
-;"root/development" [["root" "development"]]
-;"root/feature/prova" [["root" "feature"] ["feature" "prova"]]
+(use 'clojure.walk)
+(postwalk #(do (println "visiting:" %) %) (branch-tree testing-repo))
