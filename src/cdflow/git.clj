@@ -40,7 +40,12 @@
         adj-list     (distinct (apply concat adj-branches))]
     (->tree adj-list "root")))
 
-(def testing-repo "/Users/agiardina/dev/uhc-edq-quote-service")
+(def testing-repo "/Users/agiardina/dev/uhc-edq-communication-service")
+(branch-tree testing-repo)
 
-(use 'clojure.walk)
-(postwalk #(do (println "visiting:" %) %) (branch-tree testing-repo))
+(defn create-menu [item]
+  (if (seq? item)
+    (map create-menu item)
+    "a"))
+
+(map create-menu (branch-tree testing-repo))

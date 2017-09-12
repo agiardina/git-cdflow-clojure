@@ -1,5 +1,6 @@
 (ns cdflow.controller
-  (:require [clojure.java.io :as io])
+  (:require [clojure.java.io :as io]
+                        [cdflow.git :as git])
   (:import [javafx.event ActionEvent]
            [javafx.stage Stage DirectoryChooser FileChooser StageStyle Window Modality]
            [javafx.application Platform]
@@ -15,8 +16,22 @@
 
 (def current-stage (atom nil))
 
-(defn showBranches [tree]
-  (.setRoot tree (TreeItem. "Capo")))
+(defn create-item [item parent]
+  (let [tree-item (TreeItem. item)]
+    (if (nil? parent)
+      tree-item
+      (.add (.getChildren parent) tree-item))
+    tree-item))
+
+(defn create-menu [node parent]
+  (let [current-node (create-item (first node) parent)
+        children (rest node)]
+    (doall (map #(create-menu % current-node) children))
+    current-node))
+
+;@todo manage error for
+(defn showBranches [tree repo]
+    (.setRoot tree (create-menu (git/branch-tree (.getAbsolutePath repo)) nil)))
 
 (defn -onLoad [this ^ActionEvent event]
   (let [source (.getSource event)
@@ -40,4 +55,4 @@
                    .getOwnerWindow
                    .getScene)]
 
-    (showBranches (.lookup scene "#branches"))))
+    (showBranches (.lookup scene "#branches") repo)))
