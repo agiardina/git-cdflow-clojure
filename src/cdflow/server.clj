@@ -7,4 +7,4 @@
    :body "Hello World"})
 
 (defn start []
-  (run-server handler {:port 3000}))
+  (run-server #'handler {:port 3000}))
