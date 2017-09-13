@@ -1,6 +1,6 @@
 # git-cdflow-clojure
 
-FIXME: description
+FIXME: git cdflow with GUI
 
 ## Installation
 
