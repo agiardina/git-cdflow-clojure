@@ -8,8 +8,9 @@
                  [clj-jgit "0.8.9"]
                  [ring/ring-core "1.5.0"]
                  [http-kit "2.2.0"]
+                 [halgari/fn-fx "0.4.0"]
                  ]
-  :plugins [[cider/cider-nrepl "0.15.0"]]  
+  :plugins [[cider/cider-nrepl "0.15.0"]]
   :main ^:skip-aot cdflow.core
   :aot :all
   :target-path "target/%s"

@@ -1,6 +1,6 @@
 (ns cdflow.core
   (:require [clojure.java.io :as io]
-            [cdflow.gui]
+            [cdflow.gui :as gui]
             [cdflow.server :as server])
   (:import [javafx.application Application])
 
@@ -13,13 +13,22 @@
 
 (defn stop-server []
    (when-not (nil? @server)
-    ;; graceful shutdown: wait 100ms for existing requests to be finished
-    ;; :timeout is optional, when no timeout, stop immediately
     (@server :timeout 100)
     (reset! server nil))
   )
 
+(comment (defn -main [& args]
+           (start-server)
+           ;; (Application/launch cdflow.gui (into-array String args))
+
+           ))
+
 (defn -main [& args]
   (start-server)
-  (Application/launch cdflow.gui (into-array String args))
+  (gui/start)
+)
+
+(defn restart [& args]
+  (stop-server)
+  (apply -main args)
   )
