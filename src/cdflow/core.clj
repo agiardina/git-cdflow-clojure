@@ -17,12 +17,6 @@
     (reset! server nil))
   )
 
-(comment (defn -main [& args]
-           (start-server)
-           ;; (Application/launch cdflow.gui (into-array String args))
-
-           ))
-
 (defn -main [& args]
   (start-server)
   (gui/start)
