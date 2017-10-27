@@ -1,6 +1,7 @@
 (ns cdflow.controller
   (:require [clojure.java.io :as io]
-                        [cdflow.git :as git])
+            [cdflow.git :as git]
+            [cdflow.state :as state])
   (:import [javafx.event ActionEvent]
            [javafx.stage Stage DirectoryChooser FileChooser StageStyle Window Modality]
            [javafx.application Platform]
@@ -54,5 +55,5 @@
                    .getParentPopup
                    .getOwnerWindow
                    .getScene)]
-
+    (state/set-repository (.getAbsolutePath repo))
     (showBranches (.lookup scene "#branches") repo)))

@@ -1,7 +1,9 @@
 (ns cdflow.git
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
-            [clj-jgit.porcelain :as git]))
+            [clj-jgit.porcelain :as git])
+  (:import [java.lang String]
+           [java.nio.charset StandardCharsets]))
 
 (defn get-branch-name-from-ref [ref]
   (str/replace-first (.getName ref) "refs/heads/" ""))
@@ -44,3 +46,16 @@
   (if (seq? item)
     (map create-menu item)
     "a"))
+
+(defn read-repo-notes [repo-path]
+  (git/with-repo repo-path
+    (let [repository (.getRepository repo)
+          notes (.call (.setNotesRef (.notesList repo) "refs/notes/cdflow"))]
+      (->> notes
+        (map #(String. (.getBytes (.open repository (.getData %))) (StandardCharsets/UTF_8)))
+        (map #(clojure.string/split % #"\n"))
+        (flatten)
+        (filter #(re-matches #"\[(.*)->(.*)\]" %)))
+
+      ))
+  )
