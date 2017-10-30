@@ -80,17 +80,17 @@
                       {}))) flat-parents flat-coll)))
 
 (defn nesting-parents-children
-  ([result coll branch]
+  ([coll result branch]
     (let [new-result (assoc result branch (get coll branch))]
       (->> (map #(nesting-parents-children coll (get-in new-result [branch (key %)]) (key %)) (get new-result branch))
            (assoc new-result branch))))
-  ([result coll] (nesting-parents-children coll result :master)))
+  ([coll result] (nesting-parents-children coll result :master)))
 
 (defn notes->tree [repo-path]
   (git/with-repo repo-path
-    (->>  repo
-          (parse-git-notes)
-          (get-flat-parents-children)
-          (nesting-parents-children {:master {}})
-      )
-  ))
+    (let [notes (parse-git-notes repo)
+          root {:master {}}
+          parents-children (get-flat-parents-children notes)]
+      (nesting-parents-children parents-children root)
+
+      )))
