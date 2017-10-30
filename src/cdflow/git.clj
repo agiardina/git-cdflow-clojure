@@ -47,15 +47,50 @@
     (map create-menu item)
     "a"))
 
-(defn read-repo-notes [repo-path]
-  (git/with-repo repo-path
-    (let [repository (.getRepository repo)
-          notes (.call (.setNotesRef (.notesList repo) "refs/notes/cdflow"))]
-      (->> notes
-        (map #(String. (.getBytes (.open repository (.getData %))) (StandardCharsets/UTF_8)))
-        (map #(clojure.string/split % #"\n"))
-        (flatten)
-        (filter #(re-matches #"\[(.*)->(.*)\]" %)))
+(defn parse-git-notes [repo]
+  (let [repository (.getRepository repo)]
+    (->>  (.call (.setNotesRef (.notesList repo) "refs/notes/cdflow"))
+          (map #(String. (.getBytes (.open repository (.getData %))) (StandardCharsets/UTF_8)))
+          (map #(clojure.string/split % #"\n"))
+          (flatten)
+          (filter #(re-matches #"\[(.*)->(.*)\]" %))))
 
-      ))
-  )
+          ["feature/3 -> feature/4" "feature/2 -> release/56" "master -> feature/1" "master -> feature/2" "feature/2 -> feature/3"]
+          )
+
+(defn parse-note-string [note]
+  (->>  (str/split note #" -> ")
+        (map #(str/replace % #"\[|\]" ""))))
+
+(defn get-parent-from-note [note] (first (parse-note-string note)))
+
+(defn get-child-from-note [note] (last (parse-note-string note)))
+
+(defn get-flat-parents-children [flat-coll]
+  (let [flat-parents (->> flat-coll
+                          (map #(get-parent-from-note %))
+                          (set)
+                          (into [])
+                          (reduce (fn [res elem] (assoc res (keyword elem) {})) {}))]
+    (reduce (fn [res elem]
+      (assoc  res
+              (keyword (get-parent-from-note elem))
+              (assoc  (get res (keyword (get-parent-from-note elem)))
+                      (keyword (get-child-from-note elem))
+                      {}))) flat-parents flat-coll)))
+
+(defn nesting-parents-children
+  ([result coll branch]
+    (let [new-result (assoc result branch (get coll branch))]
+      (->> (map #(nesting-parents-children coll (get-in new-result [branch (key %)]) (key %)) (get new-result branch))
+           (assoc new-result branch))))
+  ([result coll] (nesting-parents-children coll result :master)))
+
+(defn notes->tree [repo-path]
+  (git/with-repo repo-path
+    (->>  repo
+          (parse-git-notes)
+          (get-flat-parents-children)
+          (nesting-parents-children {:master {}})
+      )
+  ))
