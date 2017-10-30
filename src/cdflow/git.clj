@@ -48,15 +48,19 @@
     "a"))
 
 (defn parse-git-notes [repo]
-  (let [repository (.getRepository repo)]
-    (->>  (.call (.setNotesRef (.notesList repo) "refs/notes/cdflow"))
-          (map #(String. (.getBytes (.open repository (.getData %))) (StandardCharsets/UTF_8)))
-          (map #(clojure.string/split % #"\n"))
-          (flatten)
-          (filter #(re-matches #"\[(.*)->(.*)\]" %))))
+  (try
+    (let [repository (.getRepository repo)]
+      (->>  (.call (.setNotesRef (.notesList repo) "refs/notes/cdflow"))
+            (map #(String. (.getBytes (.open repository (.getData %))) (StandardCharsets/UTF_8)))
+            (map #(clojure.string/split % #"\n"))
+            (flatten)
+            (filter #(re-matches #"\[(.*)->(.*)\]" %))))
+    (catch Exception e []))
 
-          ["feature/3 -> feature/4" "feature/2 -> release/56" "master -> feature/1" "master -> feature/2" "feature/2 -> feature/3"]
-          )
+
+  ["feature/3 -> feature/4" "feature/2 -> release/56" "master -> feature/1" "master -> feature/2" "feature/2 -> feature/3"])
+
+
 
 (defn parse-note-string [note]
   (->>  (str/split note #" -> ")
@@ -66,40 +70,41 @@
 
 (defn get-child-from-note [note] (last (parse-note-string note)))
 
-(defn get-flat-parents-children [flat-coll]
+(defn flat-parents-children [flat-coll]
   (let [flat-parents (->> flat-coll
                           (map #(get-parent-from-note %))
                           (set)
                           (into [])
                           (reduce (fn [res elem] (assoc res (keyword elem) {})) {}))]
     (reduce (fn [res elem]
-      (assoc  res
-              (keyword (get-parent-from-note elem))
-              (assoc  (get res (keyword (get-parent-from-note elem)))
-                      (keyword (get-child-from-note elem))
-                      {}))) flat-parents flat-coll)))
+             (assoc  res
+                     (keyword (get-parent-from-note elem))
+                     (assoc  (get res (keyword (get-parent-from-note elem)))
+                             (keyword (get-child-from-note elem))
+                             {}))) flat-parents flat-coll)))
 
-(defn nesting-parents-children
+(defn nest-parents-children
   ([result coll branch]
-    (let [new-result (assoc result branch (get coll branch))]
-      (->> (map #(nesting-parents-children (get-in new-result [branch (key %)]) coll (key %)) (get new-result branch))
-           (assoc new-result branch))))
-  ([result coll] (nesting-parents-children result coll :master)))
+   (let [new-result (assoc result branch (get coll branch))]
+     (->> (map #(nest-parents-children (get-in new-result [branch (key %)]) coll (key %)) (get new-result branch))
+          (assoc new-result branch))))
+  ([result coll] (nest-parents-children result coll :master)))
 
-(defn parents-children-beautify [result root tree]
-  (let [new-result (assoc result :name (subs (str root) 1) :children (get tree root))]
-
-    ; (->> (map #(parents-children-beautify (get-in new-result [root (first (keys %))]) (first (keys %)) %) (get tree root))
-    ;      (assoc new-result root))
-    )
-
-
-  )
+(defn format-parents-children [result tree]
+  (reduce-kv (fn [res k v]
+    (if (= 0 (count v))
+      (assoc res :name (subs (str k) 1) :children v)
+      (assoc res :name (subs (str k) 1) :children (map #(format-parents-children res %) v)))) result tree))
 
 (defn notes->tree [repo-path]
   (git/with-repo repo-path
     (->>  repo
           (parse-git-notes)
-          (get-flat-parents-children)
-          (nesting-parents-children {:master {}})
-          (parents-children-beautify {} :master))))
+          (flat-parents-children)
+          (nest-parents-children {:master {}})
+          (format-parents-children {}))))
+
+
+
+
+
