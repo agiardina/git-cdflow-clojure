@@ -55,12 +55,7 @@
             (map #(clojure.string/split % #"\n"))
             (flatten)
             (filter #(re-matches #"\[(.*)->(.*)\]" %))))
-    (catch Exception e []))
-
-
-  ["feature/3 -> feature/4" "feature/2 -> release/56" "master -> feature/1" "master -> feature/2" "feature/2 -> feature/3"])
-
-
+    (catch Exception e [])))
 
 (defn parse-note-string [note]
   (->>  (str/split note #" -> ")
@@ -93,16 +88,18 @@
 (defn format-parents-children [result tree]
   (reduce-kv (fn [res k v]
     (if (= 0 (count v))
-      (assoc res :name (subs (str k) 1) :children v)
+      (assoc res :name (subs (str k) 1) :size 1000)
       (assoc res :name (subs (str k) 1) :children (map #(format-parents-children res %) v)))) result tree))
 
 (defn notes->tree [repo-path]
-  (git/with-repo repo-path
-    (->>  repo
-          (parse-git-notes)
-          (flat-parents-children)
-          (nest-parents-children {:master {}})
-          (format-parents-children {}))))
+  (try
+    (git/with-repo repo-path
+      (->>  repo
+            (parse-git-notes)
+            (flat-parents-children)
+            (nest-parents-children {:master {}})
+            (format-parents-children {})))
+    (catch Exception e {})))
 
 
 
