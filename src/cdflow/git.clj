@@ -91,14 +91,25 @@
       (assoc res :name (subs (str k) 1) :size 1000)
       (assoc res :name (subs (str k) 1) :children (map #(format-parents-children res %) v)))) result tree))
 
+(defn get-tree-root [flat-tree]
+  (try
+    (->> flat-tree
+      (reduce-kv (fn [r k v] (assoc r k (reduce-kv (fn [rr kk vv] (if (not (nil? (get vv k))) (+ rr 1) rr)) 0 flat-tree))) {})
+      (filter #(= 0 (second %)))
+      (first)
+      (first))
+    (catch Exception e nil)))
+
 (defn notes->tree [repo-path]
   (try
     (git/with-repo repo-path
-      (->>  repo
-            (parse-git-notes)
-            (flat-parents-children)
-            (nest-parents-children {:master {}})
-            (format-parents-children {})))
+      (let [flat-structure (->> repo
+                                (parse-git-notes)
+                                (flat-parents-children))
+            tree-root (get-tree-root flat-structure)]
+            (as-> (assoc {} tree-root {}) $
+                  (nest-parents-children $ flat-structure tree-root)
+                  (format-parents-children {} $))))
     (catch Exception e {})))
 
 
