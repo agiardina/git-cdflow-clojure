@@ -181,7 +181,7 @@
 
 (defn get-releases-list [repo-path]
   (git/with-repo repo-path
-    (git-fetch-with-notes! repo-path)
+
     (->>  (branch-list repo-path :all)
           (filter #(re-matches #"(.*)release\/v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" %))
           (map #(str/replace % #"release\/" ""))
@@ -192,19 +192,17 @@
 
 (defn release-checkout! [repo-path version]
   (git/with-repo repo-path
-    (git-fetch-with-notes! repo-path)
     (git/git-checkout repo (str "release/" (release-name version)))))
 
 (defn parent-show [repo-path]
   (git/with-repo repo-path
-    (-> repo
-
-
-      )
-
-    )
-
-  )
+    (let [current-branch (git/git-branch-current repo)]
+      (->> (parse-git-notes repo-path)
+           (map #(str/split % #"->"))
+           (map #(map (fn [x] (str/replace (str/trim x) #"\[|\]" "")) %))
+           (filter #(str/includes? (second %) current-branch))
+           (first)
+           (first)))))
 
 
 
