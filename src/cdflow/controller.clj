@@ -57,6 +57,12 @@
                    .getSource
                    .getParentPopup
                    .getOwnerWindow
-                   .getScene)]
+                   .getScene)
+        webview (.lookup scene "#webview")
+        engine (.getEngine webview)]
     (state/set-repository (.getAbsolutePath repo))
-    (showBranches (.lookup scene "#branches") repo)))
+    (showBranches (.lookup scene "#branches") repo)
+
+    (.load engine (.toString (io/resource "tree/index.html")))
+;    (.setRoot (.lookup scene "#branches") nil)
+    ))

@@ -1,59 +1,80 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.VBox?>
-<?import javafx.scene.web.WebView?>
-
-<?import javafx.scene.control.MenuBar?>
 <?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuBar?>
 <?import javafx.scene.control.MenuItem?>
 <?import javafx.scene.control.SeparatorMenuItem?>
-<?import javafx.scene.control.TreeView?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
 <?import javafx.scene.control.TreeItem?>
+<?import javafx.scene.control.TreeView?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.web.WebView?>
 
-<VBox fx:id="editor" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1" fx:controller="cdflow.controller">
-    <children>
-        <MenuBar id="menuBar" focusTraversable="true" >
+<BorderPane prefHeight="200.0" prefWidth="200.0" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1" fx:controller="cdflow.controller">
+   <top>
+        <MenuBar id="menuBar" focusTraversable="true" BorderPane.alignment="CENTER">
             <menus>
                 <Menu text="File">
                     <items>
-                        <MenuItem text="Open" onAction="#onOpen"/>
-                        <SeparatorMenuItem  />
+                        <MenuItem onAction="#onOpen" text="Open" />
+                        <SeparatorMenuItem />
                         <MenuItem text="Exit" />
                     </items>
                 </Menu>
                 <Menu text="JavaFX 2.0 Examples">
                     <items>
-                        <MenuItem text="Text Example"/>
-                        <MenuItem text="Objects Example"/>
-                        <MenuItem text="Animation Example"/>
+                        <MenuItem text="Text Example" />
+                        <MenuItem text="Objects Example" />
+                        <MenuItem text="Animation Example" />
                     </items>
                 </Menu>
                 <Menu text="Help">
                     <items>
-                        <MenuItem text="Search" disable="true"/>
-                        <MenuItem text="Online Manual" visible="false"/>
+                        <MenuItem disable="true" text="Search" />
+                        <MenuItem text="Online Manual" visible="false" />
                         <SeparatorMenuItem />
                         <MenuItem text="About" />
                     </items>
                 </Menu>
             </menus>
         </MenuBar>
-
-        <HBox fx:id="editor_buttons">
-            <children>
-                <Button fx:id="save" minWidth="-Infinity" mnemonicParsing="false" onAction="#onLoad" text="Load" />
-                <TreeView fx:id="branches" editable="true">
-                    <TreeItem fx:id="branchesroot" value="Root">
-                        <children>
-                            <TreeItem value="Release" />
-                            <TreeItem value="Prova" />
-                        </children>
-                    </TreeItem>
-                </TreeView>
-                <WebView fx:id="webview" prefHeight="800.0" prefWidth="600.0" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS" />
-            </children>
-        </HBox>
-    </children>
-</VBox>
+   </top>
+   <left>
+      <SplitPane dividerPositions="0.5" prefHeight="800.0" prefWidth="300.0" BorderPane.alignment="CENTER">
+         <items>
+            <TabPane prefHeight="200.0" prefWidth="200.0" tabClosingPolicy="UNAVAILABLE">
+              <tabs>
+                <Tab text="Local">
+                  <content>
+                      <TreeView fx:id="branches" editable="true" prefHeight="798.0" prefWidth="0.0" showRoot="false">
+                          <root>
+                              <TreeItem fx:id="branchesroot" value="Root">
+                                  <children>
+                                      <TreeItem value="Release" />
+                                      <TreeItem value="Prova" />
+                                  </children>
+                              </TreeItem>
+                          </root>
+                      </TreeView>
+                  </content>
+                </Tab>
+                <Tab text="Origin">
+                  <content>
+                    <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0" />
+                  </content>
+                </Tab>
+              </tabs>
+            </TabPane>
+         </items>
+      </SplitPane>
+   </left>
+   <center>
+          <WebView fx:id="webview" prefHeight="900.0" prefWidth="0.0" BorderPane.alignment="CENTER" />
+   </center>
+   <!--<right>-->
+          <!--<Button fx:id="save" minWidth="-Infinity" mnemonicParsing="false" onAction="#onLoad" text="Load" BorderPane.alignment="CENTER" />-->
+   <!--</right>-->
+</BorderPane>

@@ -6,7 +6,8 @@
 
 (defn handler [request]
   {:status 200
-   :headers {"Content-Type" "application/json"}
+   :headers {"Content-Type" "application/json"
+             "Access-Control-Allow-Origin" "*"}
    :body (-> (state/get-repository)
              (git/notes->tree)
              (json/write-str)
