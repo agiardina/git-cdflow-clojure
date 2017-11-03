@@ -3,7 +3,9 @@
             [clojure.string :as str]
             [clj-jgit.porcelain :as git])
   (:import [java.lang String]
-           [java.nio.charset StandardCharsets]))
+           [java.nio.charset StandardCharsets]
+           [org.eclipse.jgit.transport RefSpec]
+           [org.eclipse.jgit.revwalk RevWalk]))
 
 (defn get-branch-name-from-ref [ref]
   (str/replace-first (.getName ref) "refs/heads/" ""))
@@ -100,6 +102,11 @@
       .getRepository
       (.resolve ref)))
 
+(defn get-head-commit-object [repo]
+  (let [repository (-> repo .getRepository)
+        head-id (-> repository (.resolve "HEAD"))]
+    (-> (RevWalk. repository) (.parseCommit head-id))))
+
 (defn- get-git-directory-path [repo]
   (-> repo
       .getRepository
@@ -126,6 +133,28 @@
       (re-matches #"^v[0-9]{1,2}\.[0-9]{1,2}$" vname) (str vname ".0")
       (re-matches #"^v[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}$" vname) vname
       :else (throw (Exception. "Not a valid release version!")))))
+
+(defn- branch-exists? [repo-path branch]
+  (->>  (branch-list repo-path :all)
+        (map #(str/replace % #"refs\/remotes\/origin\/" ""))
+        (filter #(= % branch))
+        (count)
+        (< 0)))
+
+(defn- git-notes-add! [repo message ref commit]
+  (-> repo
+    .notesAdd
+    (.setMessage message)
+    (.setNotesRef (str "refs/notes/" ref))
+    (.setObjectId commit)
+    .call))
+
+(defn- git-push-notes! [repo ref]
+  (-> repo
+    .push
+    (.add (str "refs/notes/" ref))
+    (.setRemote "origin")
+    .call))
 
 (defn get-all-commits [repo-path]
   (git/with-repo repo-path
@@ -199,6 +228,21 @@
            (first)
            (first)))))
 
+(defn parent-set! [repo-path branch]
+  (if (branch-exists? repo-path branch)
+    (git/with-repo repo-path
+      (let [current-branch (git/git-branch-current repo)]
+        (as-> (parse-git-notes repo-path) $
+          (map #(str/split % #"->") $)
+          (map #(map (fn [x] (str/replace (str/trim x) #"\[|\]" "")) %) $)
+          (filter #(not (str/includes? (second %) current-branch)) $)
+          (concat $ [[branch current-branch]])
+          (map #(str/join " -> " %) $)
+          (map #(str "[" % "]") $)
+          (str/join "\n" $)
+          (git-notes-add! repo $ "cdflow" (get-head-commit-object repo)))
+        (git-push-notes! repo "cdflow")))
+    (throw (Exception. (str "Branch " branch " doesn't exist!")))))
 
 
 

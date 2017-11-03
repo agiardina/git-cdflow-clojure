@@ -1,36 +1,3 @@
 # git-cdflow-clojure
 
-FIXME: git cdflow with GUI
-
-## Installation
-
-Download from http://example.com/FIXME.
-
-## Usage
-
-FIXME: explanation
-
-    $ java -jar git-cdflow-clojure-0.1.0-standalone.jar [args]
-
-## Options
-
-FIXME: listing of options this app accepts.
-
-## Examples
-
-...
-
-### Bugs
-
-...
-
-### Any Other Sections
-### That You Think
-### Might be Useful
-
-## License
-
-Copyright © 2017 FIXME
-
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+JGit Documentation: [http://download.eclipse.org/jgit/site/4.8.0.201706111038-r/apidocs/index.html](http://download.eclipse.org/jgit/site/4.8.0.201706111038-r/apidocs/index.html)
