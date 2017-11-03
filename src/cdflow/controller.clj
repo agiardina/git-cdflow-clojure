@@ -10,6 +10,10 @@
            [javafx.scene Scene]
            [javafx.scene.input KeyEvent KeyCode]
            [javafx.scene.control TreeView TreeItem]
+           [javafx.scene.control.cell PropertyValueFactory]
+           (javafx.collections ObservableList)
+           (javafx.collections FXCollections)
+           (javafx.scene.control TableColumn)
            [java.awt Desktop])
 
   (:gen-class
@@ -35,6 +39,28 @@
 ;@todo manage error for
 (defn showBranches [tree repo opt]
     (.setRoot tree (create-menu (git/branch-tree (.getAbsolutePath repo) opt) nil)))
+
+(defn show-commits [scene repo]
+  (let [description (.lookup scene "#commitstableDescription")
+
+        commit   (doto (TableColumn. "Commit") (.setMinWidth 100))
+        date  (doto (TableColumn. "Date") (.setMinWidth 150))
+        description (doto (TableColumn. "Description") (.setMinWidth 70))
+
+        table (.lookup scene "#commitstable")
+        commits (FXCollections/observableArrayList (git/get-all-ref-commits repo))
+        ]
+
+
+  (doto table
+  (-> .getColumns (.addAll [commit date description]))
+        (.setItems commits))
+
+      (.. description (setCellValueFactory (PropertyValueFactory. "fullMessage")))
+      (.. commit (setCellValueFactory (PropertyValueFactory. "name")))
+      (.. date (setCellValueFactory (PropertyValueFactory. "commitTime")))
+
+    ))
 
 (defn -onLoad [this ^ActionEvent event]
   (if (not (nil? (state/get-repository)))
@@ -63,5 +89,6 @@
     (state/set-repository (.getAbsolutePath repo))
     (showBranches (.lookup scene "#branches") repo :local)
     (showBranches (.lookup scene "#branchesorigin") repo :remote)
+    (show-commits scene repo)
 
     (.load engine (.toString (io/resource "tree/index.html")))))

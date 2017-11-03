@@ -166,6 +166,10 @@
                     :author {:name (.getName (.getAuthorIdent x))
                              :email (.getEmailAddress (.getAuthorIdent x))}})))))
 
+(defn get-all-ref-commits [repo-path]
+  (git/with-repo repo-path (->> repo git/git-log)))
+
+
 (defn parse-git-notes [repo-path]
   (try
     (git/with-repo repo-path
@@ -206,6 +210,7 @@
 
 (defn get-releases-list [repo-path]
   (git/with-repo repo-path
+
     (->>  (branch-list repo-path :all)
           (filter #(re-matches #"(.*)release\/v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" %))
           (map #(str/replace % #"release\/" ""))

@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import java.lang.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.web.*?>
 <?import javafx.scene.control.Menu?>
 <?import javafx.scene.control.MenuBar?>
 <?import javafx.scene.control.MenuItem?>
@@ -13,7 +17,7 @@
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.web.WebView?>
 
-<BorderPane prefHeight="200.0" prefWidth="200.0" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1" fx:controller="cdflow.controller">
+<BorderPane prefHeight="200.0" prefWidth="200.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="cdflow.controller">
    <top>
         <MenuBar id="menuBar" focusTraversable="true" BorderPane.alignment="CENTER">
             <menus>
@@ -43,7 +47,7 @@
         </MenuBar>
    </top>
    <left>
-      <SplitPane dividerPositions="0.5" prefHeight="800.0" prefWidth="300.0" BorderPane.alignment="CENTER">
+      <SplitPane prefHeight="800.0" prefWidth="300.0" BorderPane.alignment="CENTER">
          <items>
             <TabPane prefHeight="200.0" prefWidth="200.0" tabClosingPolicy="UNAVAILABLE">
               <tabs>
@@ -63,7 +67,7 @@
                 </Tab>
                 <Tab text="Origin">
                   <content>
-                      <TreeView fx:id="branchesorigin" editable="true" prefHeight="798.0" prefWidth="0.0" showRoot="false" >
+                      <TreeView fx:id="branchesorigin" editable="true" prefHeight="798.0" prefWidth="0.0" showRoot="false">
                         <root>
                             <TreeItem fx:id="branchesrootorigin" value="Root">
                                 <children>
@@ -81,7 +85,19 @@
       </SplitPane>
    </left>
    <center>
-          <WebView fx:id="webview" prefHeight="900.0" prefWidth="0.0" BorderPane.alignment="CENTER" />
+      <SplitPane dividerPositions="0.5" orientation="VERTICAL">
+         <items>
+            <TableView fx:id="commitstable" prefHeight="200.0" prefWidth="200.0">
+              <columns>
+                <!--<TableColumn fx:id="commitstableDescription" prefWidth="75.0" text="Description" />-->
+                <!--<TableColumn fx:id="commitstableCommit" prefWidth="75.0" text="Commit" />-->
+                <!--<TableColumn fx:id="commitstableAuthor" prefWidth="75.0" text="Author" />-->
+                <!--<TableColumn fx:id="commitstableDate" prefWidth="75.0" text="Date" />-->
+              </columns>
+            </TableView>
+                <WebView fx:id="webview" prefHeight="900.0" prefWidth="0.0" BorderPane.alignment="CENTER" />
+         </items>
+      </SplitPane>
    </center>
    <!--<right>-->
           <!--<Button fx:id="save" minWidth="-Infinity" mnemonicParsing="false" onAction="#onLoad" text="Load" BorderPane.alignment="CENTER" />-->
