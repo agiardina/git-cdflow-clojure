@@ -8,8 +8,13 @@
 (defn get-branch-name-from-ref [ref]
   (str/replace-first (.getName ref) "refs/heads/" ""))
 
-(defn branch-list [repo]
-  (map get-branch-name-from-ref (git/git-branch-list (git/load-repo repo))))
+(defn branch-list
+  ([repo-path opt]
+    (git/with-repo repo-path
+      (->> (git/git-branch-list repo opt)
+           (map get-branch-name-from-ref))))
+  ([repo-path]
+    (branch-list repo-path :local)))
 
 (defn ->branch
   [id kids]
@@ -47,25 +52,15 @@
     (map create-menu item)
     "a"))
 
-(defn parse-git-notes [repo]
-  (try
-    (let [repository (.getRepository repo)]
-      (->>  (.call (.setNotesRef (.notesList repo) "refs/notes/cdflow"))
-            (map #(String. (.getBytes (.open repository (.getData %))) (StandardCharsets/UTF_8)))
-            (map #(clojure.string/split % #"\n"))
-            (flatten)
-            (filter #(re-matches #"\[(.*)->(.*)\]" %))))
-    (catch Exception e [])))
-
-(defn parse-note-string [note]
+(defn- parse-note-string [note]
   (->>  (str/split note #" -> ")
         (map #(str/replace % #"\[|\]" ""))))
 
-(defn get-parent-from-note [note] (first (parse-note-string note)))
+(defn- get-parent-from-note [note] (first (parse-note-string note)))
 
-(defn get-child-from-note [note] (last (parse-note-string note)))
+(defn- get-child-from-note [note] (last (parse-note-string note)))
 
-(defn flat-parents-children [flat-coll]
+(defn- flat-parents-children [flat-coll]
   (let [flat-parents (->> flat-coll
                           (map #(get-parent-from-note %))
                           (set)
@@ -78,20 +73,20 @@
                              (keyword (get-child-from-note elem))
                              {}))) flat-parents flat-coll)))
 
-(defn nest-parents-children
+(defn- nest-parents-children
   ([result coll branch]
    (let [new-result (assoc result branch (get coll branch))]
      (->> (map #(nest-parents-children (get-in new-result [branch (key %)]) coll (key %)) (get new-result branch))
           (assoc new-result branch))))
   ([result coll] (nest-parents-children result coll :master)))
 
-(defn format-parents-children [result tree]
+(defn- format-parents-children [result tree]
   (reduce-kv (fn [res k v]
     (if (= 0 (count v))
       (assoc res :name (subs (str k) 1) :size 1000)
       (assoc res :name (subs (str k) 1) :children (map #(format-parents-children res %) v)))) result tree))
 
-(defn get-tree-root [flat-tree]
+(defn- get-tree-root [flat-tree]
   (try
     (->> flat-tree
       (reduce-kv (fn [r k v] (assoc r k (reduce-kv (fn [rr kk vv] (if (not (nil? (get vv k))) (+ rr 1) rr)) 0 flat-tree))) {})
@@ -100,10 +95,44 @@
       (first))
     (catch Exception e nil)))
 
+(defn- get-commit-id [repo ref]
+  (-> repo
+      .getRepository
+      (.resolve ref)))
+
+(defn- get-git-directory-path [repo]
+  (-> repo
+      .getRepository
+      .getDirectory
+      .getAbsolutePath))
+
+(defn- sort-versions-list [v-list]
+  (->>  v-list
+        (map #(str/replace % #"v" ""))
+        (sort #(let [split1 (map (fn [x] (Integer. x)) (str/split %1 #"\."))
+                     split2 (map (fn [x] (Integer. x)) (str/split %2 #"\."))]
+          (if (= 0 (compare (first split1) (first split2)))
+            (if (= 0 (compare (second split1) (second split2)))
+              (compare (last split1) (last split2))
+              (compare (second split1) (second split2)))
+            (compare (first split1) (first split2)))))
+        (map #(str "v" %))))
+
+(defn parse-git-notes [repo-path]
+  (try
+    (git/with-repo repo-path
+      (let [repository (.getRepository repo)]
+        (->>  (.call (.setNotesRef (.notesList repo) "refs/notes/cdflow"))
+              (map #(String. (.getBytes (.open repository (.getData %))) (StandardCharsets/UTF_8)))
+              (map #(clojure.string/split % #"\n"))
+              (flatten)
+              (filter #(re-matches #"\[(.*)->(.*)\]" %)))))
+    (catch Exception e [])))
+
 (defn notes->tree [repo-path]
   (try
     (git/with-repo repo-path
-      (let [flat-structure (->> repo
+      (let [flat-structure (->> repo-path
                                 (parse-git-notes)
                                 (flat-parents-children))
             tree-root (get-tree-root flat-structure)]
@@ -112,6 +141,31 @@
                   (format-parents-children {} $))))
     (catch Exception e {})))
 
+(defn git-fetch-with-notes
+  ([repo-path remote]
+    (git/with-repo repo-path
+      (let [git-dir (get-git-directory-path repo)
+            current-branch (git/git-branch-current repo)]
+        (git/git-fetch-all repo remote)
+        (if (not (.isFile (io/file (str git-dir "/refs/notes/cdflow"))))
+          (git/git-fetch repo remote "refs/notes/cdflow:refs/notes/cdflow"))
+        (git/git-checkout repo "refs/notes/cdflow")
+        (git/git-fetch repo remote "refs/notes/cdflow:refs/notes/origin/cdflow")
+        (git/git-merge repo (get-commit-id repo "refs/notes/origin/cdflow") :theirs)
+        (git/git-checkout repo current-branch))))
+  ([repo-path]
+    (git-fetch-with-notes repo-path "origin")))
+
+(defn get-releases-list [repo-path]
+  (git/with-repo repo-path
+    (git/git-fetch-all repo)
+    (->>  (branch-list repo-path :all)
+          (filter #(re-matches #"(.*)release\/v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" %))
+          (map #(str/replace % #"release\/" ""))
+          (map #(str/replace % #"refs\/remotes\/origin\/" ""))
+          set
+          (into [])
+          sort-versions-list)))
 
 
 
