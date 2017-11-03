@@ -118,6 +118,25 @@
             (compare (first split1) (first split2)))))
         (map #(str "v" %))))
 
+(defn- release-name [name]
+  (let [sname (str name)
+        vname (if (re-matches #"^[v|V].*" sname) (str/lower-case (str sname)) (str "v" sname))]
+    (cond
+      (re-matches #"^v[0-9]{1,3}$" vname) (str vname ".0.0")
+      (re-matches #"^v[0-9]{1,2}\.[0-9]{1,2}$" vname) (str vname ".0")
+      (re-matches #"^v[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}$" vname) vname
+      :else (throw (Exception. "Not a valid release version!")))))
+
+(defn get-all-commits [repo-path]
+  (git/with-repo repo-path
+    (->> repo
+      git/git-log
+      (map (fn [x] {:commit (.getName x)
+                    :message (.getFullMessage x)
+                    :time (.getCommitTime x)
+                    :author {:name (.getName (.getAuthorIdent x))
+                             :email (.getEmailAddress (.getAuthorIdent x))}})))))
+
 (defn parse-git-notes [repo-path]
   (try
     (git/with-repo repo-path
@@ -141,7 +160,7 @@
                   (format-parents-children {} $))))
     (catch Exception e {})))
 
-(defn git-fetch-with-notes
+(defn git-fetch-with-notes!
   ([repo-path remote]
     (git/with-repo repo-path
       (let [git-dir (get-git-directory-path repo)
@@ -158,7 +177,7 @@
 
 (defn get-releases-list [repo-path]
   (git/with-repo repo-path
-    (git/git-fetch-all repo)
+    (git-fetch-with-notes repo-path)
     (->>  (branch-list repo-path :all)
           (filter #(re-matches #"(.*)release\/v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" %))
           (map #(str/replace % #"release\/" ""))
@@ -166,6 +185,22 @@
           set
           (into [])
           sort-versions-list)))
+
+(defn release-checkout! [repo-path version]
+  (git/with-repo repo-path
+    (git-fetch-with-notes! repo-path)
+    (git/git-checkout repo (str "release/" (release-name version)))))
+
+(defn parent-show [repo-path]
+  (git/with-repo repo-path
+    (-> repo
+
+
+      )
+
+    )
+
+  )
 
 
 
