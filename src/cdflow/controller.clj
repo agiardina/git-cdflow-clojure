@@ -33,8 +33,8 @@
     current-node))
 
 ;@todo manage error for
-(defn showBranches [tree repo]
-    (.setRoot tree (create-menu (git/branch-tree (.getAbsolutePath repo)) nil)))
+(defn showBranches [tree repo opt]
+    (.setRoot tree (create-menu (git/branch-tree (.getAbsolutePath repo) opt) nil)))
 
 (defn -onLoad [this ^ActionEvent event]
   (if (not (nil? (state/get-repository)))
@@ -61,8 +61,7 @@
         webview (.lookup scene "#webview")
         engine (.getEngine webview)]
     (state/set-repository (.getAbsolutePath repo))
-    (showBranches (.lookup scene "#branches") repo)
+    (showBranches (.lookup scene "#branches") repo :local)
+    (showBranches (.lookup scene "#branchesorigin") repo :remote)
 
-    (.load engine (.toString (io/resource "tree/index.html")))
-;    (.setRoot (.lookup scene "#branches") nil)
-    ))
+    (.load engine (.toString (io/resource "tree/index.html")))))

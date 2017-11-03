@@ -40,8 +40,8 @@
     (conj adj (lazy-seq vec))
     (->adj (next vec) (conj adj (take 2 vec)))))
 
-(defn branch-tree [repo]
-  (let [branches     (map #(str "root/" %) (branch-list repo))
+(defn branch-tree [repo opt]
+  (let [branches     (map #(str "root/" %) (branch-list repo opt))
         vec-branches (map #(str/split % #"/") branches)
         adj-branches (map #(->adj % []) vec-branches)
         adj-list     (distinct (apply concat adj-branches))]
