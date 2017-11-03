@@ -63,7 +63,16 @@
                 </Tab>
                 <Tab text="Origin">
                   <content>
-                    <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0" />
+                      <TreeView fx:id="branchesorigin" editable="true" prefHeight="798.0" prefWidth="0.0" showRoot="false" >
+                        <root>
+                            <TreeItem fx:id="branchesrootorigin" value="Root">
+                                <children>
+                                    <TreeItem value="Release" />
+                                    <TreeItem value="Prova" />
+                                </children>
+                            </TreeItem>
+                        </root>
+                      </TreeView>
                   </content>
                 </Tab>
               </tabs>
