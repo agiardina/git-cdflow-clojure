@@ -137,6 +137,10 @@
                     :author {:name (.getName (.getAuthorIdent x))
                              :email (.getEmailAddress (.getAuthorIdent x))}})))))
 
+(defn get-all-ref-commits [repo-path]
+  (git/with-repo repo-path (->> repo git/git-log)))
+
+
 (defn parse-git-notes [repo-path]
   (try
     (git/with-repo repo-path
@@ -173,11 +177,11 @@
         (git/git-merge repo (get-commit-id repo "refs/notes/origin/cdflow") :theirs)
         (git/git-checkout repo current-branch))))
   ([repo-path]
-    (git-fetch-with-notes repo-path "origin")))
+    (git-fetch-with-notes! repo-path "origin")))
 
 (defn get-releases-list [repo-path]
   (git/with-repo repo-path
-    (git-fetch-with-notes repo-path)
+    (git-fetch-with-notes! repo-path)
     (->>  (branch-list repo-path :all)
           (filter #(re-matches #"(.*)release\/v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" %))
           (map #(str/replace % #"release\/" ""))
