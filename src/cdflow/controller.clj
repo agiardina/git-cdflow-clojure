@@ -63,7 +63,12 @@
     (.. date (setCellValueFactory (PropertyValueFactory. "commitTime")))))
 
 (defn -onSelectCommit [this ^MouseEvent event]
-  (clojure.pprint/pprint (.getName (.getSelectedItem (.getSelectionModel (.getSource event))))))
+  (let [tv (.getSource event)
+        scene (.getScene tv)
+        commit (.getName (.getSelectedItem (.getSelectionModel tv)))
+        webview (.lookup scene "#webview")
+        engine  (.getEngine webview)]
+    (.executeScript engine (str "showCommitInBranches('" commit  "');"))))
 
 (defn -onLoad [this ^ActionEvent event]
   (if (not (nil? (state/get-repository)))
