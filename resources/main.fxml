@@ -87,7 +87,7 @@
    <center>
       <SplitPane dividerPositions="0.5" orientation="VERTICAL">
          <items>
-            <TableView fx:id="commitstable" prefHeight="200.0" prefWidth="200.0">
+            <TableView fx:id="commitstable" prefHeight="200.0" prefWidth="200.0" onMousePressed="#onSelectCommit">
               <columns>
                 <!--<TableColumn fx:id="commitstableDescription" prefWidth="75.0" text="Description" />-->
                 <!--<TableColumn fx:id="commitstableCommit" prefWidth="75.0" text="Commit" />-->
