@@ -1,11 +1,17 @@
 (ns cdflow.git
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
-            [clj-jgit.porcelain :as git])
+            [clj-jgit.porcelain :as git]
+            [clojure.pprint])
   (:import [java.lang String]
            [java.nio.charset StandardCharsets]
+           [org.eclipse.jgit.lib ObjectInserter CommitBuilder PersonIdent]
            [org.eclipse.jgit.transport RefSpec]
-           [org.eclipse.jgit.revwalk RevWalk]))
+           [org.eclipse.jgit.revwalk RevWalk RevCommit]
+           [org.eclipse.jgit.notes NoteMap NoteMapMerger]))
+
+;@fixme is the right place where to put this code? Is the code that we want?
+(System/setProperty "jsse.enableSNIExtension" "false")
 
 (defn get-branch-name-from-ref [ref]
   (str/replace-first (.getName ref) "refs/heads/" ""))
@@ -230,6 +236,73 @@
         (git/git-checkout repo current-branch))))
   ([repo-path]
     (git-fetch-with-notes! repo-path "origin")))
+
+
+(defn git-fetch-notes!
+  ([repo-path]
+   (git-fetch-notes! repo-path "origin"))
+  ([repo-path remote]
+    (git/with-repo repo-path (git/git-fetch repo remote "refs/notes/cdflow:refs/notes/origin/cdflow"))))
+
+
+
+;CommitBuilder commitBuilder = new CommitBuilder();
+;commitBuilder.setTreeId( treeId );
+;commitBuilder.setMessage( "My first commit!" );
+;PersonIdent person = new PersonIdent( "me", "me@example.com" );
+;commitBuilder.setAuthor( person );
+;commitBuilder.setCommitter( person );
+;ObjectInserter objectInserter = repository.newObjectInserter();
+;ObjectId commitId = objectInserter.insert( commitBuilder );
+;objectInserter.flush();
+
+(defn- update-ref! [repo refs object-id]
+  (let [local-ref-update (.updateRef  (.getRepository repo) "refs/notes/cdflow")]
+    (.setNewObjectId local-ref-update object-id)
+    (.disableRefLog local-ref-update)
+    (.forceUpdate local-ref-update)))
+
+(defn git-merge-notes!
+  ([repo-path remote]
+    (git/with-repo repo-path
+    (let [repository (.getRepository repo)
+          notes-local-repo (.getRef repository "refs/notes/cdflow")
+          notes-origin-repo (.getRef repository "refs/notes/origin/cdflow")]
+
+      (cond
+        (and (not notes-local-repo) (not notes-origin-repo))
+          true
+        (not notes-local-repo)
+          (update-ref! repo "refs/notes/cdflow" (.getObjectId notes-origin-repo))
+        (not notes-origin-repo)
+          true
+          :else
+          (let [walk (RevWalk. repository)
+                reader (.newObjectReader repository)
+                inserter (.newObjectInserter repository)
+                merger (NoteMapMerger. repository)
+                empty (NoteMap/newEmptyMap)
+                person (PersonIdent. "me", "me@example.com")
+                commit-builder (CommitBuilder.)
+                commit-local (.parseCommit walk (.getObjectId notes-local-repo))
+                commit-origin (.parseCommit walk (.getObjectId notes-origin-repo))
+                ours (NoteMap/read reader commit-local)
+                theirs (NoteMap/read reader commit-origin)
+                result (.merge merger empty ours theirs)
+                tree-id (.writeTree result inserter)]
+
+            (doto commit-builder
+                  (.setTreeId tree-id)
+                  (.setCommitter person)
+                  (.setAuthor person)
+                  (.setMessage "CDFlow Merge Notes")
+                  (.setParentIds commit-local commit-origin))
+
+            (update-ref! repo "refs/notes/cdflow" (.insert inserter commit-builder))
+            (.flush inserter))))))
+
+  ([repo-path]
+   (git-merge-notes! repo-path "origin")))
 
 (defn get-releases-list [repo-path]
   (git/with-repo repo-path

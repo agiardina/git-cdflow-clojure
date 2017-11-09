@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.scene.image.*?>
+<?import java.net.*?>
+<?import javafx.scene.text.*?>
+<?import javafx.scene.effect.*?>
+<?import javafx.scene.*?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.paint.*?>
 <?import java.lang.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
@@ -17,77 +24,133 @@
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.web.WebView?>
 
-<BorderPane prefHeight="200.0" prefWidth="200.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="cdflow.controller">
+<BorderPane prefHeight="616.0" prefWidth="874.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="cdflow.controller">
    <top>
-        <MenuBar id="menuBar" focusTraversable="true" BorderPane.alignment="CENTER">
-            <menus>
-                <Menu text="File">
-                    <items>
-                        <MenuItem onAction="#onOpen" text="Open" />
-                        <SeparatorMenuItem />
-                        <MenuItem text="Exit" />
-                    </items>
-                </Menu>
-                <Menu text="JavaFX 2.0 Examples">
-                    <items>
-                        <MenuItem text="Text Example" />
-                        <MenuItem text="Objects Example" />
-                        <MenuItem text="Animation Example" />
-                    </items>
-                </Menu>
-                <Menu text="Help">
-                    <items>
-                        <MenuItem disable="true" text="Search" />
-                        <MenuItem text="Online Manual" visible="false" />
-                        <SeparatorMenuItem />
-                        <MenuItem text="About" />
-                    </items>
-                </Menu>
-            </menus>
-        </MenuBar>
+      <VBox>
+         <children>
+              <MenuBar id="menuBar" focusTraversable="true" BorderPane.alignment="CENTER">
+                  <menus>
+                      <Menu text="File">
+                          <items>
+                              <MenuItem onAction="#onOpen" text="Open" />
+                              <SeparatorMenuItem />
+                              <MenuItem text="Exit" />
+                          </items>
+                      </Menu>
+                      <Menu text="Help">
+                          <items>
+                              <MenuItem disable="true" text="Search" />
+                              <MenuItem text="Online Manual" visible="false" />
+                              <SeparatorMenuItem />
+                              <MenuItem text="About" />
+                          </items>
+                      </Menu>
+                  </menus>
+              </MenuBar>
+            <ToolBar prefHeight="40.0" prefWidth="200.0" stylesheets="@sidebarmenu.css">
+              <items>
+                <Button mnemonicParsing="false" text="Fetch" onMouseClicked="#onFetchClick">
+                     <graphic>
+                        <ImageView fitHeight="32.0" fitWidth="31.0" pickOnBounds="true" preserveRatio="true">
+                           <image>
+                              <Image url="@img/download.png" />
+                           </image>
+                        </ImageView>
+                     </graphic>
+                     <font>
+                        <Font size="11.0" />
+                     </font></Button>
+              </items>
+            </ToolBar>
+         </children>
+      </VBox>
    </top>
    <left>
       <SplitPane prefHeight="800.0" prefWidth="300.0" BorderPane.alignment="CENTER">
          <items>
-            <TabPane prefHeight="200.0" prefWidth="200.0" tabClosingPolicy="UNAVAILABLE">
-              <tabs>
-                <Tab text="Local">
-                  <content>
-                      <TreeView fx:id="branches" editable="true" prefHeight="798.0" prefWidth="0.0" showRoot="false">
-                          <root>
-                              <TreeItem fx:id="branchesroot" value="Root">
-                                  <children>
-                                      <TreeItem value="Release" />
-                                      <TreeItem value="Prova" />
-                                  </children>
-                              </TreeItem>
-                          </root>
-                      </TreeView>
-                  </content>
-                </Tab>
-                <Tab text="Origin">
-                  <content>
-                      <TreeView fx:id="branchesorigin" editable="true" prefHeight="798.0" prefWidth="0.0" showRoot="false">
-                        <root>
-                            <TreeItem fx:id="branchesrootorigin" value="Root">
-                                <children>
-                                    <TreeItem value="Release" />
-                                    <TreeItem value="Prova" />
-                                </children>
-                            </TreeItem>
-                        </root>
-                      </TreeView>
-                  </content>
-                </Tab>
-              </tabs>
-            </TabPane>
+            <HBox>
+               <children>
+                  <ToolBar orientation="VERTICAL" prefHeight="129.0" prefWidth="0.0">
+                    <items>
+                        <Group>
+                           <children>
+                              <Button mnemonicParsing="false" onMouseClicked="#onBranchesMenuClick" rotate="-90.0" text="Branches">
+                                 <font>
+                                    <Font size="11.0" />
+                                 </font>
+                                 <stylesheets>
+                                    <URL value="@sidebarmenu.css" />
+                                 </stylesheets>
+                              </Button>
+                           </children>
+                        </Group>
+                        <Group>
+                           <children>
+                            <Button mnemonicParsing="false" onMouseClicked="#onReleasesMenuClick" rotate="-90.0" stylesheets="@sidebarmenu.css" text="Releases">
+                                 <font>
+                                    <Font size="11.0" />
+                                 </font>
+                              </Button>
+                           </children>
+                        </Group>
+                    </items>
+                     <HBox.margin>
+                        <Insets />
+                     </HBox.margin>
+                     <padding>
+                        <Insets left="1.0" right="1.0" />
+                     </padding>
+                  </ToolBar>
+                  <VBox fx:id="sidePanel">
+                     <children>
+                        <TabPane prefHeight="10000.0" prefWidth="600.0" tabClosingPolicy="UNAVAILABLE">
+                          <tabs>
+                            <Tab text="Local">
+                              <content>
+                                  <TreeView fx:id="branches" editable="true" prefHeight="96.0" prefWidth="223.0" showRoot="false">
+                                      <root>
+                                          <TreeItem fx:id="branchesroot" value="Root">
+                                              <children>
+                                                  <TreeItem value="Release" />
+                                                  <TreeItem value="Prova" />
+                                              </children>
+                                          </TreeItem>
+                                      </root>
+                                  </TreeView>
+                              </content>
+                            </Tab>
+                            <Tab text="Origin">
+                              <content>
+                                  <TreeView fx:id="branchesorigin" editable="true" prefHeight="798.0" prefWidth="0.0" showRoot="false">
+                                    <root>
+                                        <TreeItem fx:id="branchesrootorigin" value="Root">
+                                            <children>
+                                                <TreeItem value="Release" />
+                                                <TreeItem value="Prova" />
+                                            </children>
+                                        </TreeItem>
+                                    </root>
+                                  </TreeView>
+                              </content>
+                            </Tab>
+                          </tabs>
+                        </TabPane>
+                        <ListView fx:id="releases" maxHeight="0.0" prefHeight="1000.0" prefWidth="1000.0">
+                            <items>
+
+                            </items>
+                        </ListView>
+                     </children>
+                  </VBox>
+               </children>
+            </HBox>
          </items>
       </SplitPane>
    </left>
    <center>
       <SplitPane dividerPositions="0.5" orientation="VERTICAL">
          <items>
-            <TableView fx:id="commitstable" prefHeight="200.0" prefWidth="200.0" onMousePressed="#onSelectCommit">
+            <TableView fx:id="commitstable" onMousePressed="#onSelectCommit" prefHeight="200.0" prefWidth="200.0">
               <columns>
                 <!--<TableColumn fx:id="commitstableDescription" prefWidth="75.0" text="Description" />-->
                 <!--<TableColumn fx:id="commitstableCommit" prefWidth="75.0" text="Commit" />-->

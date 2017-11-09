@@ -1,9 +1,9 @@
 (ns cdflow.server
   (:require [cdflow.state :as state]
             [cdflow.git :as git]
-            [clojure.data.json :as json])
-  (:use [clojure.string :as string]
-        [clojure.walk :only [postwalk]]
+            [clojure.data.json :as json]
+            [clojure.string :as string])
+  (:use [clojure.walk :only [postwalk]]
         [org.httpkit.server :only [run-server]]
         [compojure.route :only [files not-found]]
         [compojure.handler :only [site]] ; form, query params decode; cookie; session, etc
