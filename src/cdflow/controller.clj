@@ -95,6 +95,7 @@
     (.executeScript engine (str "showCommitInBranches('" commit  "');"))))
 
 (defn -onFetchClick [this ^MouseEvent event]
+  (git/git-fetch! (state/get-repository))
   (git/git-fetch-notes! (state/get-repository))
   (git/git-merge-notes! (state/get-repository)))
 

@@ -2,11 +2,13 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clj-jgit.porcelain :as git]
+            [clj-jgit.internal :as git-internal]
             [clojure.pprint])
   (:import [java.lang String]
            [java.nio.charset StandardCharsets]
            [org.eclipse.jgit.lib ObjectInserter CommitBuilder PersonIdent]
            [org.eclipse.jgit.transport RefSpec]
+           [org.eclipse.jgit.revwalk.filter RevFilter]
            [org.eclipse.jgit.revwalk RevWalk RevCommit]
            [org.eclipse.jgit.notes NoteMap NoteMapMerger]))
 
@@ -237,6 +239,10 @@
   ([repo-path]
     (git-fetch-with-notes! repo-path "origin")))
 
+(defn git-fetch! [repo-path]
+    (git/with-repo repo-path
+        (git/git-fetch repo)))
+
 
 (defn git-fetch-notes!
   ([repo-path]
@@ -245,23 +251,26 @@
     (git/with-repo repo-path (git/git-fetch repo remote "refs/notes/cdflow:refs/notes/origin/cdflow"))))
 
 
-
-;CommitBuilder commitBuilder = new CommitBuilder();
-;commitBuilder.setTreeId( treeId );
-;commitBuilder.setMessage( "My first commit!" );
-;PersonIdent person = new PersonIdent( "me", "me@example.com" );
-;commitBuilder.setAuthor( person );
-;commitBuilder.setCommitter( person );
-;ObjectInserter objectInserter = repository.newObjectInserter();
-;ObjectId commitId = objectInserter.insert( commitBuilder );
-;objectInserter.flush();
-
 (defn- update-ref! [repo refs object-id]
   (let [local-ref-update (.updateRef  (.getRepository repo) "refs/notes/cdflow")]
     (.setNewObjectId local-ref-update object-id)
     (.disableRefLog local-ref-update)
-    (.forceUpdate local-ref-update)))
+    (.forceUpdate local-ref-update)))=
 
+(defn get-merge-base [repo-path commit-a commit-b]
+  (git/with-repo repo-path
+                 (let [walk (git-internal/new-rev-walk repo)
+                       rev-a (.lookupCommit walk (git-internal/resolve-object commit-a repo))
+                       rev-b (.lookupCommit walk (git-internal/resolve-object commit-b repo))]
+                   (doto walk
+                         (.setRevFilter RevFilter/MERGE_BASE)
+                         (.markStart rev-a)
+                         (.markStart rev-b))
+                   (.next walk))))
+
+
+;@fixme refactor this method
+;@get the right person from the git config
 (defn git-merge-notes!
   ([repo-path remote]
     (git/with-repo repo-path
@@ -270,14 +279,14 @@
           notes-origin-repo (.getRef repository "refs/notes/origin/cdflow")]
 
       (cond
-        (and (not notes-local-repo) (not notes-origin-repo))
+        (and (not notes-local-repo) (not notes-origin-repo)) ;Nothing to do, there are not merge local notes or remote notes
           true
         (not notes-local-repo)
-          (update-ref! repo "refs/notes/cdflow" (.getObjectId notes-origin-repo))
+          (update-ref! repo "refs/notes/cdflow" (.getObjectId notes-origin-repo)) ;First merge, notes only on remote
         (not notes-origin-repo)
           true
           :else
-          (let [walk (RevWalk. repository)
+          (let [walk (git-internal/new-rev-walk repo)
                 reader (.newObjectReader repository)
                 inserter (.newObjectInserter repository)
                 merger (NoteMapMerger. repository)
@@ -288,18 +297,27 @@
                 commit-origin (.parseCommit walk (.getObjectId notes-origin-repo))
                 ours (NoteMap/read reader commit-local)
                 theirs (NoteMap/read reader commit-origin)
-                result (.merge merger empty ours theirs)
-                tree-id (.writeTree result inserter)]
+                base (get-merge-base repo-path commit-local commit-origin)                
+                base-note (if base (NoteMap/read reader base) empty)  
+                result (.merge merger base-note ours theirs)]
+            
+            (cond 
+              (= commit-origin base) ;Already merged
+                true 
+              (= commit-local base) ;Fast forward
+                (update-ref! repo "refs/notes/cdflow" (.getObjectId notes-origin-repo))
+              :else
+                (do 
+                  (doto commit-builder
+                    (.setTreeId (.writeTree result inserter))
+                    (.setCommitter person)
+                    (.setAuthor person)
+                    (.setMessage "CDFlow Merge Notes")
+                    (.setParentIds commit-local commit-origin))
 
-            (doto commit-builder
-                  (.setTreeId tree-id)
-                  (.setCommitter person)
-                  (.setAuthor person)
-                  (.setMessage "CDFlow Merge Notes")
-                  (.setParentIds commit-local commit-origin))
+                    (update-ref! repo "refs/notes/cdflow" (.insert inserter commit-builder))))
 
-            (update-ref! repo "refs/notes/cdflow" (.insert inserter commit-builder))
-            (.flush inserter))))))
+                (.flush inserter))))))
 
   ([repo-path]
    (git-merge-notes! repo-path "origin")))
