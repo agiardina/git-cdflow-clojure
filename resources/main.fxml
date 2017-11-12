@@ -49,17 +49,67 @@
               </MenuBar>
             <ToolBar prefHeight="40.0" prefWidth="200.0" stylesheets="@sidebarmenu.css">
               <items>
-                <Button mnemonicParsing="false" text="Fetch" onMouseClicked="#onFetchClick">
+                <Button mnemonicParsing="false" onMouseClicked="#onFetchClick" text="Fetch">
                      <graphic>
                         <ImageView fitHeight="32.0" fitWidth="31.0" pickOnBounds="true" preserveRatio="true">
                            <image>
-                              <Image url="@img/download.png" />
+                              <Image url="@img/fetch.png" />
                            </image>
                         </ImageView>
                      </graphic>
                      <font>
                         <Font size="11.0" />
-                     </font></Button>
+                     </font>
+                </Button>
+                <Button mnemonicParsing="false" text="Parent pull">
+                     <graphic>
+                        <ImageView fitHeight="32.0" fitWidth="31.0" pickOnBounds="true" preserveRatio="true">
+                           <image>
+                              <Image url="@img/parentpull.png" />
+                           </image>
+                        </ImageView>
+                     </graphic>
+                     <font>
+                        <Font size="11.0" />
+                     </font>
+                </Button>
+                  <Pane prefHeight="20.0" prefWidth="80.0" />
+                  <Button layoutX="10.0" layoutY="10.0" mnemonicParsing="false" onMouseClicked="#onFetchClick" text="New release">
+                     <font>
+                        <Font size="11.0" />
+                     </font>
+                     <graphic>
+                        <ImageView fitHeight="32.0" fitWidth="31.0" pickOnBounds="true" preserveRatio="true">
+                           <image>
+                              <Image url="@img/newrelease.png" />
+                           </image>
+                        </ImageView>
+                     </graphic>
+                  </Button>
+                  <Button layoutX="206.0" layoutY="10.0" mnemonicParsing="false" onMouseClicked="#onFetchClick" text="New feature">
+                     <font>
+                        <Font size="11.0" />
+                     </font>
+                     <graphic>
+                        <ImageView fitHeight="32.0" fitWidth="31.0" pickOnBounds="true" preserveRatio="true">
+                           <image>
+                              <Image url="@img/newfeature.png" />
+                           </image>
+                        </ImageView>
+                     </graphic>
+                  </Button>
+                  <Button layoutX="325.0" layoutY="10.0" mnemonicParsing="false" onMouseClicked="#onFetchClick" text="Close feature">
+                     <font>
+                        <Font size="11.0" />
+                     </font>
+                     <graphic>
+                        <ImageView fitHeight="32.0" fitWidth="31.0" pickOnBounds="true" preserveRatio="true">
+                           <image>
+                              <Image url="@img/closefeature.png" />
+                           </image>
+                        </ImageView>
+                     </graphic>
+                  </Button>                
               </items>
             </ToolBar>
          </children>
@@ -107,7 +157,7 @@
                           <tabs>
                             <Tab text="Local">
                               <content>
-                                  <TreeView fx:id="branches" editable="true" prefHeight="96.0" prefWidth="223.0" showRoot="false">
+                                  <TreeView fx:id="branches" editable="true" prefHeight="96.0" prefWidth="223.0" showRoot="false" stylesheets="@sidebarmenu.css">
                                       <root>
                                           <TreeItem fx:id="branchesroot" value="Root">
                                               <children>
@@ -150,12 +200,12 @@
    <center>
       <SplitPane dividerPositions="0.5" orientation="VERTICAL">
          <items>
-            <TableView fx:id="commitstable" onMousePressed="#onSelectCommit" prefHeight="200.0" prefWidth="200.0">
+            <TableView fx:id="commitstable" onMousePressed="#onSelectCommit" prefHeight="200.0" prefWidth="200.0" stylesheets="@sidebarmenu.css">
               <columns>
-                <!--<TableColumn fx:id="commitstableDescription" prefWidth="75.0" text="Description" />-->
-                <!--<TableColumn fx:id="commitstableCommit" prefWidth="75.0" text="Commit" />-->
-                <!--<TableColumn fx:id="commitstableAuthor" prefWidth="75.0" text="Author" />-->
-                <!--<TableColumn fx:id="commitstableDate" prefWidth="75.0" text="Date" />-->
+                <TableColumn fx:id="commitstableCommit" prefWidth="75.0" sortable="false" text="Commit" />
+                <TableColumn fx:id="commitstableDescription" prefWidth="550.0" sortable="false" text="Description" />
+                <TableColumn fx:id="commitstableAuthor" prefWidth="120.0" sortable="false" text="Author" />
+                <TableColumn fx:id="commitstableDate" prefWidth="150.0" sortable="false" text="Date" />
               </columns>
             </TableView>
                 <WebView fx:id="webview" prefHeight="900.0" prefWidth="0.0" BorderPane.alignment="CENTER" />

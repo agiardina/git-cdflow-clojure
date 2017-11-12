@@ -269,8 +269,8 @@
                    (.next walk))))
 
 
-;@fixme refactor this method
-;@get the right person from the git config
+;@todo refactor this method
+;@todo get the right person from the git config
 (defn git-merge-notes!
   ([repo-path remote]
     (git/with-repo repo-path

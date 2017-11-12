@@ -16,11 +16,16 @@
            [javafx.scene.control TableColumn]
            [javafx.scene.control TableRow]
            [javafx.util Callback]
-           [java.awt Desktop])
+           [javafx.beans.property SimpleStringProperty]
+           [java.awt Desktop]
+           [java.util Date]
+           [java.text SimpleDateFormat]
+           )
 
   (:gen-class
     :methods
-    [[onLoad [javafx.event.ActionEvent] void]
+    [[initialize [] void]
+     [onLoad [javafx.event.ActionEvent] void]
      [onOpen [javafx.event.ActionEvent] void]
      [onSelectCommit [javafx.scene.input.MouseEvent] void]
      [onReleasesMenuClick [javafx.scene.input.MouseEvent] void]
@@ -47,23 +52,26 @@
   (.setRoot tree (create-menu (git/branch-tree (.getAbsolutePath repo) opt) nil)))
 
 (defn show-commits [scene repo]
-  (let [description (.lookup scene "#commitstableDescription")
+  (let [description (.getTableColumn (.lookup scene "#commitstableDescription"))
+        commit (.getTableColumn (.lookup scene "#commitstableCommit"))
+        date (.getTableColumn (.lookup scene "#commitstableDate"))
+        author (.getTableColumn (.lookup scene "#commitstableAuthor"))
+        table  (.lookup scene "#commitstable")
+        commits (FXCollections/observableArrayList (git/get-all-ref-commits repo))
+        date-format (SimpleDateFormat. "MMM d yyyy, HH:mm")]
 
-        commit      (doto (TableColumn. "Commit") (.setMinWidth 100))
-        date        (doto (TableColumn. "Date") (.setMinWidth 150))
-        description (doto (TableColumn. "Description") (.setMinWidth 70))
-
-        table       (.lookup scene "#commitstable")
-        commits     (FXCollections/observableArrayList (git/get-all-ref-commits repo))]
-
-
-    (doto table
-          (-> .getColumns (.addAll [commit date description]))
-          (.setItems commits))
+    (doto table (.setItems commits))
 
     (.. description (setCellValueFactory (PropertyValueFactory. "fullMessage")))
     (.. commit (setCellValueFactory (PropertyValueFactory. "name")))
-    (.. date (setCellValueFactory (PropertyValueFactory. "commitTime")))))
+    
+    (.. author (setCellValueFactory (proxy [Callback] []
+        (call [c] (SimpleStringProperty. (.getName (.getAuthorIdent (.getValue c))))))))
+
+    (.. date (setCellValueFactory (proxy [Callback] []
+        (call [c] (SimpleStringProperty. (.format date-format (Date. (* 1000 (.longValue (.getCommitTime (.getValue c)))))))))))))
+
+    ; (.. date (setCellValueFactory (PropertyValueFactory. "commitTime")))))
 
 (defn show-releases [listview repo]
   (let [releases     (FXCollections/observableArrayList (git/get-releases-list repo))]
@@ -129,6 +137,7 @@
     (show-releases (.lookup scene "#releases") repo)
     (show-commits scene repo)
 
-    ;    (clojure.pprint/pprint (git/branch-list-contains (.getAbsolutePath repo) "b09009c1a4000cb5d3ab62255b3a6eaf5a967b0e"))
-
     (.load engine (.toString (io/resource "tree/index.html")))))
+
+(defn -initialize [a]
+  (clojure.pprint/pprint "initialize"))
