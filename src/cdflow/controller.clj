@@ -30,6 +30,7 @@
      [onSelectCommit [javafx.scene.input.MouseEvent] void]
      [onReleasesMenuClick [javafx.scene.input.MouseEvent] void]
      [onBranchesMenuClick [javafx.scene.input.MouseEvent] void]
+     [onParentPullClick [javafx.scene.input.MouseEvent] void]
      [onFetchClick [javafx.scene.input.MouseEvent] void]]))
 
 (def current-stage (atom nil))
@@ -85,7 +86,6 @@
     (.setMaxSize (.get children 0) 0 0 )
     (.setMaxSize (.get children 1) 1000 1000 )))
 
-
 (defn -onBranchesMenuClick [this ^MouseEvent event]
   (let [scene (.. event (getSource) (getScene))
         sidePanel (.lookup scene "#sidePanel")
@@ -103,9 +103,10 @@
     (.executeScript engine (str "showCommitInBranches('" commit  "');"))))
 
 (defn -onFetchClick [this ^MouseEvent event]
-  (git/git-fetch! (state/get-repository))
-  (git/git-fetch-notes! (state/get-repository))
-  (git/git-merge-notes! (state/get-repository)))
+  (git/git-fetch-and-merge-notes! (state/get-repository)))
+
+(defn -onParentPullClick [this ^MouseEvent event]
+  (git/parent-pull! (state/get-repository)))  
 
 (defn -onLoad [this ^ActionEvent event]
   (if (not (nil? (state/get-repository)))

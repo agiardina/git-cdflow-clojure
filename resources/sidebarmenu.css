@@ -11,3 +11,7 @@
     -fx-alignment: CENTER;
     -fx-content-display: LEFT;
 }
+
+.table-view{
+  -fx-font-size: 11px;
+ }

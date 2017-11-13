@@ -61,7 +61,7 @@
                         <Font size="11.0" />
                      </font>
                 </Button>
-                <Button mnemonicParsing="false" text="Parent pull">
+                <Button mnemonicParsing="false" text="Parent pull" onMouseClicked="#onParentPullClick">
                      <graphic>
                         <ImageView fitHeight="32.0" fitWidth="31.0" pickOnBounds="true" preserveRatio="true">
                            <image>
