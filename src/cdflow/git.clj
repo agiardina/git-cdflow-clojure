@@ -156,20 +156,30 @@
         (map #(str "v" %))))
 
 (defn- release-name [name]
-  (let [sname (str name)
+  (let [sname (-> (str name) (str/split #"\/") last)
         vname (if (re-matches #"^[v|V].*" sname) (str/lower-case (str sname)) (str "v" sname))]
     (cond
-      (re-matches #"^v[0-9]{1,3}$" vname) (str vname ".0.0")
-      (re-matches #"^v[0-9]{1,2}\.[0-9]{1,2}$" vname) (str vname ".0")
-      (re-matches #"^v[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}$" vname) vname
+      (re-matches #"^v[0-9]{1,3}$" vname) (str "release/" vname ".0.0")
+      (re-matches #"^v[0-9]{1,2}\.[0-9]{1,2}$" vname) (str "release/" vname ".0")
+      (re-matches #"^v[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}$" vname) (str "release/" vname)
       :else (throw (Exception. "Not a valid release version!")))))
 
-(defn- branch-exists? [repo-path branch]
-  (->>  (branch-list repo-path :all)
-        (map #(str/replace % #"refs\/remotes\/origin\/" ""))
-        (filter #(= % branch))
-        (count)
-        (< 0)))
+(defn- feature-name [name]
+  (as-> name $
+        (str $)
+        (str/split $ #"\/")
+        (last $)
+        (str "feature/" $)))
+
+(defn- branch-exists?
+  ([repo-path branch]
+    (branch-exists? repo-path branch :all))
+  ([repo-path branch location]
+    (->>  (branch-list repo-path location)
+          (map #(str/replace % #"refs\/remotes\/origin\/" ""))
+          (filter #(= % branch))
+          (count)
+          (< 0))))
 
 (defn- git-notes-add! [repo message ref commit]
   (-> repo
@@ -185,6 +195,18 @@
     (.add (str "refs/notes/" ref))
     (.setRemote "origin")
     .call))
+
+(defn- git-push! [repo]
+  (-> repo
+    .push
+    (.setRemote "origin")
+    .call))
+
+(defn git-checkout-branch! [repo-path branch]
+  (git/with-repo repo-path
+    (if (branch-exists? repo-path branch :local)
+      (git/git-checkout repo branch)
+      (git/git-checkout repo branch true))))
 
 (defn get-all-commits [repo-path]
   (git/with-repo repo-path
@@ -247,7 +269,7 @@
   ([repo-path]
    (git-fetch-notes! repo-path "origin"))
   ([repo-path remote]
-    (git/with-repo repo-path (git/git-fetch repo remote "refs/notes/cdflow:refs/notes/origin/cdflow"))))    
+    (git/with-repo repo-path (git/git-fetch repo remote "refs/notes/cdflow:refs/notes/origin/cdflow"))))
 
 (defn- update-ref! [repo refs object-id]
   (let [local-ref-update (.updateRef  (.getRepository repo) "refs/notes/cdflow")]
@@ -294,17 +316,17 @@
                 commit-origin (.parseCommit walk (.getObjectId notes-origin-repo))
                 ours (NoteMap/read reader commit-local)
                 theirs (NoteMap/read reader commit-origin)
-                base (get-merge-base repo-path commit-local commit-origin)                
-                base-note (if base (NoteMap/read reader base) empty)  
+                base (get-merge-base repo-path commit-local commit-origin)
+                base-note (if base (NoteMap/read reader base) empty)
                 result (.merge merger base-note ours theirs)]
-            
-            (cond 
+
+            (cond
               (= commit-origin base) ;Already merged
-                true 
+                true
               (= commit-local base) ;Fast forward
                 (update-ref! repo "refs/notes/cdflow" (.getObjectId notes-origin-repo))
               :else
-                (do 
+                (do
                   (doto commit-builder
                     (.setTreeId (.writeTree result inserter))
                     (.setCommitter person)
@@ -324,33 +346,17 @@
 (defn git-fetch-and-merge-notes! [repo-path]
   (git-fetch! repo-path)
   (git-fetch-notes! repo-path)
-  (git-merge-notes! repo-path))   
+  (git-merge-notes! repo-path))
 
-(defn get-releases-list [repo-path]
-  (git/with-repo repo-path
-
-    (->>  (branch-list repo-path :all)
-          (filter #(re-matches #"(.*)release\/v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" %))
-          (map #(str/replace % #"release\/" ""))
-          (map #(str/replace % #"refs\/remotes\/origin\/" ""))
-          set
-          (into [])
-          sort-versions-list)))
-
-(defn release-checkout! [repo-path version]
-  (git/with-repo repo-path
-    (git/git-checkout repo (str "release/" (release-name version)))))
-
-;Return the parent of the current branch
-(defn get-parent [repo-path]
+(defn get-parent "Return the parent of the current branch" [repo-path]
   (git/with-repo repo-path
     (let [current-branch (git/git-branch-current repo)]
       (->> (parse-git-notes repo-path)
-           (map #(str/split % #"->"))
-           (map #(map (fn [x] (str/replace (str/trim x) #"\[|\]" "")) %))
-           (filter #(str/includes? (second %) current-branch))
-           (first)
-           (first)))))
+            (map #(str/split % #"->"))
+            (map #(map (fn [x] (str/replace (str/trim x) #"\[|\]" "")) %))
+            (filter #(str/includes? (second %) current-branch))
+            (first)
+            (first)))))
 
 (defn parent-pull! [repo-path]
   (git/with-repo repo-path
@@ -371,6 +377,43 @@
           (map #(str/join " -> " %) $)
           (map #(str "[" % "]") $)
           (str/join "\n" $)
-          (git-notes-add! repo $ "cdflow" (get-head-commit-object repo)))
-        (git-push-notes! repo "cdflow")))
+          (git-notes-add! repo $ "cdflow" (get-head-commit-object repo)))))
     (throw (Exception. (str "Branch " branch " doesn't exist!")))))
+
+(defn get-releases-list [repo-path]
+  (git/with-repo repo-path
+    (->>  (branch-list repo-path :all)
+          (filter #(re-matches #"(.*)release\/v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" %))
+          (map #(str/replace % #"release\/" ""))
+          (map #(str/replace % #"refs\/remotes\/origin\/" ""))
+          set
+          (into [])
+          sort-versions-list)))
+
+(defn release-checkout! [repo-path version]
+  (git/with-repo repo-path
+    (as-> version $
+          (release-name $)
+          (git-checkout-branch! repo-path $))))
+
+(defn release-start! [repo-path from to]
+  (let [source (release-name from)
+        target (release-name to)]
+    (if (and (branch-exists? repo-path source) (git-fetch-and-merge-notes! repo-path))
+      (git/with-repo repo-path
+        (git-checkout-branch! repo-path source)
+        (git/git-pull repo)
+        (if (not (branch-exists? repo-path target)) (git/git-branch-create repo target))
+        (git-checkout-branch! repo-path target)
+        (parent-set! repo-path source)
+        (git-push-notes! repo "cdflow")
+        (git-push! repo))
+      (throw (Exception. (str "Branch " source " doesn't exist!"))))))
+
+(defn feature-start! [repo-path name]
+  (git/with-repo repo-path
+    (let [parent (git/git-branch-current repo)
+          feature (feature-name name)]
+      (git/git-branch-create repo feature)
+      (git-checkout-branch! repo-path feature)
+      (parent-set! repo-path parent))))
