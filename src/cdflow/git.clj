@@ -392,9 +392,9 @@
 
 (defn release-checkout! [repo-path version]
   (git/with-repo repo-path
-    (as-> version $
-          (release-name $)
-          (git-checkout-branch! repo-path $))))
+    (->> version
+         release-name
+         (git-checkout-branch! repo-path))))
 
 (defn release-start! [repo-path from to]
   (let [source (release-name from)
@@ -410,6 +410,12 @@
         (git-push! repo))
       (throw (Exception. (str "Branch " source " doesn't exist!"))))))
 
+(defn feature-checkout! [repo-path name]
+  (git/with-repo repo-path
+    (->> name
+         feature-name
+         (git-checkout-branch! repo-path))))
+
 (defn feature-start! [repo-path name]
   (git/with-repo repo-path
     (let [parent (git/git-branch-current repo)
@@ -417,3 +423,15 @@
       (git/git-branch-create repo feature)
       (git-checkout-branch! repo-path feature)
       (parent-set! repo-path parent))))
+
+(defn feature-finish! [repo-path]
+  (git/with-repo repo-path
+    (let [current-branch (git/git-branch-current repo)]
+      (if (re-matches #"^feature\/(.*)" current-branch)
+        (let [last-feature-commit (get-commit-id repo (str "refs/heads/" current-branch))
+              parent (get-parent repo-path)]
+          (git-checkout-branch! repo-path parent)
+          (git/git-pull repo)
+          (git/git-merge repo last-feature-commit)
+          (git/git-branch-delete repo [current-branch]))
+        (throw (Exception. (str "You are not in a feature branch: " current-branch)))))))
