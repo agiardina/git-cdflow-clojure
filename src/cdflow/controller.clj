@@ -24,8 +24,7 @@
 
   (:gen-class
     :methods
-    [[initialize [] void]
-     [onLoad [javafx.event.ActionEvent] void]
+    [[onLoad [javafx.event.ActionEvent] void]
      [onOpen [javafx.event.ActionEvent] void]
      [onSelectCommit [javafx.scene.input.MouseEvent] void]
      [onReleasesMenuClick [javafx.scene.input.MouseEvent] void]
@@ -139,6 +138,3 @@
     (show-commits scene repo)
 
     (.load engine (.toString (io/resource "tree/index.html")))))
-
-(defn -initialize [a]
-  (clojure.pprint/pprint "initialize"))
