@@ -247,7 +247,7 @@
   ([repo-path]
    (git-fetch-notes! repo-path "origin"))
   ([repo-path remote]
-    (git/with-repo repo-path (git/git-fetch repo remote "refs/notes/cdflow:refs/notes/origin/cdflow"))))    
+    (git/with-repo repo-path (git/git-fetch repo remote "refs/notes/cdflow:refs/notes/origin/cdflow"))))
 
 (defn- update-ref! [repo refs object-id]
   (let [local-ref-update (.updateRef  (.getRepository repo) "refs/notes/cdflow")]
@@ -294,17 +294,17 @@
                 commit-origin (.parseCommit walk (.getObjectId notes-origin-repo))
                 ours (NoteMap/read reader commit-local)
                 theirs (NoteMap/read reader commit-origin)
-                base (get-merge-base repo-path commit-local commit-origin)                
-                base-note (if base (NoteMap/read reader base) empty)  
+                base (get-merge-base repo-path commit-local commit-origin)
+                base-note (if base (NoteMap/read reader base) empty)
                 result (.merge merger base-note ours theirs)]
-            
-            (cond 
+
+            (cond
               (= commit-origin base) ;Already merged
-                true 
+                true
               (= commit-local base) ;Fast forward
                 (update-ref! repo "refs/notes/cdflow" (.getObjectId notes-origin-repo))
               :else
-                (do 
+                (do
                   (doto commit-builder
                     (.setTreeId (.writeTree result inserter))
                     (.setCommitter person)
@@ -324,7 +324,7 @@
 (defn git-fetch-and-merge-notes! [repo-path]
   (git-fetch! repo-path)
   (git-fetch-notes! repo-path)
-  (git-merge-notes! repo-path))   
+  (git-merge-notes! repo-path))
 
 (defn get-releases-list [repo-path]
   (git/with-repo repo-path
@@ -339,7 +339,12 @@
 
 (defn release-checkout! [repo-path version]
   (git/with-repo repo-path
-    (git/git-checkout repo (str "release/" (release-name version)))))
+    (as-> version $
+          (str/split $ #"\/")
+          (last $)
+          (release-name $)
+          (str "release/" $)
+          (git/git-checkout repo $))))
 
 ;Return the parent of the current branch
 (defn get-parent [repo-path]
