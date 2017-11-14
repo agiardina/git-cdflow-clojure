@@ -164,6 +164,13 @@
       (re-matches #"^v[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}$" vname) (str "release/" vname)
       :else (throw (Exception. "Not a valid release version!")))))
 
+(defn- feature-name [name]
+  (as-> name $
+        (str $)
+        (str/split $ #"\/")
+        (last $)
+        (str "feature/" $)))
+
 (defn- branch-exists?
   ([repo-path branch]
     (branch-exists? repo-path branch :all))
@@ -370,8 +377,7 @@
           (map #(str/join " -> " %) $)
           (map #(str "[" % "]") $)
           (str/join "\n" $)
-          (git-notes-add! repo $ "cdflow" (get-head-commit-object repo)))
-        (git-push-notes! repo "cdflow")))
+          (git-notes-add! repo $ "cdflow" (get-head-commit-object repo)))))
     (throw (Exception. (str "Branch " branch " doesn't exist!")))))
 
 (defn get-releases-list [repo-path]
@@ -400,5 +406,14 @@
         (if (not (branch-exists? repo-path target)) (git/git-branch-create repo target))
         (git-checkout-branch! repo-path target)
         (parent-set! repo-path source)
+        (git-push-notes! repo "cdflow")
         (git-push! repo))
       (throw (Exception. (str "Branch " source " doesn't exist!"))))))
+
+(defn feature-start! [repo-path name]
+  (git/with-repo repo-path
+    (let [parent (git/git-branch-current repo)
+          feature (feature-name name)]
+      (git/git-branch-create repo feature)
+      (git-checkout-branch! repo-path feature)
+      (parent-set! repo-path parent))))
