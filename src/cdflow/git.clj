@@ -155,22 +155,6 @@
             (compare (first split1) (first split2)))))
         (map #(str "v" %))))
 
-(defn- release-name [name]
-  (let [sname (-> (str name) (str/split #"\/") last)
-        vname (if (re-matches #"^[v|V].*" sname) (str/lower-case (str sname)) (str "v" sname))]
-    (cond
-      (re-matches #"^v[0-9]{1,3}$" vname) (str "release/" vname ".0.0")
-      (re-matches #"^v[0-9]{1,2}\.[0-9]{1,2}$" vname) (str "release/" vname ".0")
-      (re-matches #"^v[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}$" vname) (str "release/" vname)
-      :else (throw (Exception. "Not a valid release version!")))))
-
-(defn- feature-name [name]
-  (as-> name $
-        (str $)
-        (str/split $ #"\/")
-        (last $)
-        (str "feature/" $)))
-
 (defn- branch-exists?
   ([repo-path branch]
     (branch-exists? repo-path branch :all))
@@ -202,6 +186,21 @@
     (.setRemote "origin")
     .call))
 
+(defn release-name [name]
+  (let [sname (-> (str name) (str/split #"\/") last)
+        vname (if (re-matches #"^[v|V].*" sname) (str/lower-case (str sname)) (str "v" sname))]
+    (cond
+      (re-matches #"^v[0-9]{1,3}$" vname) (str "release/" vname ".0.0")
+      (re-matches #"^v[0-9]{1,2}\.[0-9]{1,2}$" vname) (str "release/" vname ".0")
+      (re-matches #"^v[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}$" vname) (str "release/" vname)
+      :else (throw (Exception. "Not a valid release version!")))))
+
+(defn feature-name [name]
+  (as-> name $
+        (str $)
+        (str/split $ #"\/")
+        (last $)
+        (str "feature/" $)))
 (defn git-checkout-branch! [repo-path branch]
   (git/with-repo repo-path
     (if (branch-exists? repo-path branch :local)

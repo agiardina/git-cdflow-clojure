@@ -38,4 +38,7 @@
       (Application/launch cdflow.gui (into-array String args)))
 
     (if (get-in options [:options :cli])
-      (cdflow.cli/run (System/getProperty "user.dir") options))))
+      (cdflow.cli/run
+        "/Users/dcivallero/dev/test-repo"
+        ; (System/getProperty "user.dir")
+          options))))

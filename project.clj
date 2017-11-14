@@ -11,7 +11,8 @@
                  [http-kit "2.2.0"]
                  [compojure "1.6.0"]
                  [org.clojure/data.json "0.2.6"]
-                 [org.clojure/tools.cli "0.3.5"]]
+                 [org.clojure/tools.cli "0.3.5"]
+                 [org.clojars.civa86/pretty.cli "1.0.1"]]
   :plugins [[cider/cider-nrepl "0.15.0"]]
   :main ^:skip-aot cdflow.core
   :aot :all
