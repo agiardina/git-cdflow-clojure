@@ -1,5 +1,7 @@
 (ns cdflow.controller
   (:require [clojure.java.io :as io]
+            [cdflow.utils :refer [log]]
+            [cdflow.gui :as gui]
             [cdflow.git :as git]
             [cdflow.state :as state]
             [clojure.pprint :as pp])
@@ -99,6 +101,7 @@
         commit (.getName (.getSelectedItem (.getSelectionModel tv)))
         webview (.lookup scene "#webview")
         engine  (.getEngine webview)]
+    (log (str "Select commit " (subs commit 0 7) "..."))
     (.executeScript engine (str "showCommitInBranches('" commit  "');"))))
 
 (defn -onFetchClick [this ^MouseEvent event]
@@ -106,19 +109,6 @@
 
 (defn -onParentPullClick [this ^MouseEvent event]
   (git/parent-pull! (state/get-repository)))  
-
-(defn -onLoad [this ^ActionEvent event]
-  (if (not (nil? (state/get-repository)))
-    (let [source  (.getSource event)
-          scene   (.getScene source)
-          editor  (.lookup scene "#editor")
-          webview (.lookup scene "#webview")
-          menuBar (.lookup scene "#menuBar")
-          engine  (.getEngine webview)]
-
-      (.set (.useSystemMenuBarProperty menuBar) true)
-      (.load engine (.toString (io/resource "tree/index.html")))
-      (.setRoot (.lookup scene "#branches") nil))))
 
 (defn -onOpen [this ^ActionEvent event]
   (let [chooser (doto (DirectoryChooser.)
@@ -131,6 +121,8 @@
                      .getScene)
         webview (.lookup scene "#webview")
         engine  (.getEngine webview)]
+    
+    (log (str "Opening " (.getAbsolutePath repo)))
     (state/set-repository (.getAbsolutePath repo))
     (showBranches (.lookup scene "#branches") repo :local)
     (showBranches (.lookup scene "#branchesorigin") repo :remote)

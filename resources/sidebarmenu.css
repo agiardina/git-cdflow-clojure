@@ -15,3 +15,22 @@
 .table-view{
   -fx-font-size: 11px;
  }
+
+ TextFlow {
+    -fx-background-color: #1e1e1e;
+    -fx-display-caret: true ;
+}
+
+Text {
+    -fx-font-size:10px;
+    -fx-text-fill: #d4d4d4;
+    -fx-fill: #d4d4d4;
+}
+
+Text.message-error {
+    -fx-fill: #dd0000;
+}
+
+Text.message-success {
+    -fx-fill: #99dd99;
+}

@@ -61,7 +61,7 @@
                         <Font size="11.0" />
                      </font>
                 </Button>
-                <Button mnemonicParsing="false" text="Parent pull" onMouseClicked="#onParentPullClick">
+                <Button mnemonicParsing="false" onMouseClicked="#onParentPullClick" text="Parent pull">
                      <graphic>
                         <ImageView fitHeight="32.0" fitWidth="31.0" pickOnBounds="true" preserveRatio="true">
                            <image>
@@ -116,7 +116,7 @@
       </VBox>
    </top>
    <left>
-      <SplitPane prefHeight="800.0" prefWidth="300.0" BorderPane.alignment="CENTER">
+      <SplitPane prefHeight="800.0" prefWidth="250.0" BorderPane.alignment="CENTER">
          <items>
             <HBox>
                <children>
@@ -153,11 +153,11 @@
                   </ToolBar>
                   <VBox fx:id="sidePanel">
                      <children>
-                        <TabPane prefHeight="10000.0" prefWidth="600.0" tabClosingPolicy="UNAVAILABLE">
+                        <TabPane prefHeight="10000.0" tabClosingPolicy="UNAVAILABLE">
                           <tabs>
                             <Tab text="Local">
                               <content>
-                                  <TreeView fx:id="branches" editable="true" prefHeight="96.0" prefWidth="223.0" showRoot="false" stylesheets="@sidebarmenu.css">
+                                  <TreeView fx:id="branches" editable="true" prefHeight="96.0" prefWidth="220.0" showRoot="false" stylesheets="@sidebarmenu.css">
                                       <root>
                                           <TreeItem fx:id="branchesroot" value="Root">
                                               <children>
@@ -212,6 +212,13 @@
          </items>
       </SplitPane>
    </center>
+   <right>
+      <TextFlow fx:id="log" prefHeight="10000.0" prefWidth="300.0" stylesheets="@sidebarmenu.css" BorderPane.alignment="CENTER">
+         <padding>
+            <Insets bottom="30.0" left="10.0" right="10.0" top="10.0" />
+         </padding>
+      </TextFlow>
+   </right>
    <!--<right>-->
           <!--<Button fx:id="save" minWidth="-Infinity" mnemonicParsing="false" onAction="#onLoad" text="Load" BorderPane.alignment="CENTER" />-->
    <!--</right>-->

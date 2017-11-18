@@ -5,7 +5,7 @@
 
     (:gen-class :name cdflow.cli))
 
-(defn- help [command]
+(defn help [command]
     (println (slurp (io/resource (str "help/" command ".txt")))))
 
 (defn release-list [path]
@@ -18,11 +18,7 @@
                             (take 10))
           from (prompt/list-select "Select the release branch you want to branch from" release-list)]
 
-        (clojure.pprint/pprint from)
-
-        )
-
-    )
+        (clojure.pprint/pprint from)))
 
 (defn run [path options]
     (let [command (first (:arguments options))

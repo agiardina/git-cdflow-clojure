@@ -1,5 +1,6 @@
 (ns cdflow.git
   (:require [clojure.java.io :as io]
+            [cdflow.utils :refer [log]]
             [clojure.string :as str]
             [clj-jgit.porcelain :as git]
             [clj-jgit.internal :as git-internal]
@@ -245,6 +246,12 @@
 
 (defn add-el [node] (if (map? node) (assoc node :test "me") node))
 
+(defn get-origin-url [repo]
+  (-> repo 
+    (.getRepository)
+    (.getConfig)
+    (.getString "remote" "origin" "url")))
+
 (defn git-fetch-with-notes!
   ([repo-path remote]
     (git/with-repo repo-path
@@ -268,7 +275,9 @@
   ([repo-path]
    (git-fetch-notes! repo-path "origin"))
   ([repo-path remote]
-    (git/with-repo repo-path (git/git-fetch repo remote "refs/notes/cdflow:refs/notes/origin/cdflow"))))
+    (git/with-repo repo-path 
+      (log (str "Fetching notes from " (get-origin-url repo)))
+      (git/git-fetch repo remote "refs/notes/cdflow:refs/notes/origin/cdflow"))))
 
 (defn- update-ref! [repo refs object-id]
   (let [local-ref-update (.updateRef  (.getRepository repo) "refs/notes/cdflow")]
@@ -292,6 +301,9 @@
 (defn git-merge-notes!
   ([repo-path remote]
     (git/with-repo repo-path
+    
+    (log "Merging notes")
+    
     (let [repository (.getRepository repo)
           notes-local-repo (.getRef repository "refs/notes/cdflow")
           notes-origin-repo (.getRef repository "refs/notes/origin/cdflow")]
@@ -320,10 +332,14 @@
                 result (.merge merger base-note ours theirs)]
 
             (cond
-              (= commit-origin base) ;Already merged
-                true
+              (= commit-origin base) ;Already Updated
+                (do 
+                  (log "Notes already updated") 
+                  true)
               (= commit-local base) ;Fast forward
-                (update-ref! repo "refs/notes/cdflow" (.getObjectId notes-origin-repo))
+                (do 
+                  (log "Notes fast forward") 
+                  (update-ref! repo "refs/notes/cdflow" (.getObjectId notes-origin-repo)))
               :else
                 (do
                   (doto commit-builder
@@ -332,6 +348,9 @@
                     (.setAuthor person)
                     (.setMessage "CDFlow Merge Notes")
                     (.setParentIds commit-local commit-origin))
+
+                    (log "Notes merged")
+                    (log (str (subs (.getName commit-local) 0 7) ".." (subs (.getName commit-origin) 0 7)))
 
                     (update-ref! repo "refs/notes/cdflow" (.insert inserter commit-builder))))
 
@@ -358,11 +377,17 @@
             (first)))))
 
 (defn parent-pull! [repo-path]
+  (log "Parent pull")
   (git/with-repo repo-path
     (if (git-fetch-and-merge-notes! repo-path)
       (let [parent (get-parent repo-path)
-            parent-commit-id (get-commit-id repo (str "refs/remotes/origin/" parent))]
-            (git/git-merge repo parent-commit-id)))))
+            parent-commit-id (get-commit-id repo (str "refs/remotes/origin/" parent))
+            merge-result (git/git-merge repo parent-commit-id)
+            merge-status (.getMergeStatus merge-result)
+            merge-success (.isSuccessful merge-status)]
+            (if merge-success
+              (log "Merge completed with success" [:success])
+              (log (str "Merge failed wiith status " merge-status) [:error]))))))
 
 (defn parent-set! [repo-path branch]
   (if (branch-exists? repo-path branch)
@@ -433,4 +458,4 @@
           (git/git-pull repo)
           (git/git-merge repo last-feature-commit)
           (git/git-branch-delete repo [current-branch]))
-        (throw (Exception. (str "You are not in a feature branch: " current-branch)))))))
+        (throw (Exception. (str "You are not in a featuure branch: " current-branch)))))))

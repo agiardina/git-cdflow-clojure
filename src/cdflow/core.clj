@@ -28,8 +28,6 @@
 
 (defn -main [& args]
 
-  (clojure.pprint/pprint (System/getProperty "user.dir"))
-
   (let [options (parse-opts args cli-options)]
     (if (nil? (get-in options [:options :no-server]))
       (start-server))
@@ -38,7 +36,4 @@
       (Application/launch cdflow.gui (into-array String args)))
 
     (if (get-in options [:options :cli])
-      (cdflow.cli/run
-        "/Users/dcivallero/dev/test-repo"
-        ; (System/getProperty "user.dir")
-          options))))
+      (cdflow.cli/run (System/getProperty "user.dir") options))))

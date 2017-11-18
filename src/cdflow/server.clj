@@ -1,6 +1,7 @@
 (ns cdflow.server
   (:require [cdflow.state :as state]
             [cdflow.git :as git]
+            [cdflow.cli :as cli]
             [clojure.data.json :as json]
             [clojure.string :as string])
   (:use [clojure.walk :only [postwalk]]
@@ -30,11 +31,16 @@
                tree-highlight (postwalk add-el tree)]
            (json/write-str tree-highlight))})
 
-
+(defn cli-response [req]
+  {:status 200
+   :headers {"Content-Type" "text/plain"
+             "Access-Control-Allow-Origin" "*"}
+   :body (with-out-str (cli/help "release"))})
 
 (defroutes all-routes
   (GET "/tree" [] get-tree)
-  (GET "/tree/commit/:id" [] get-tree-commit))
+  (GET "/tree/commit/:id" [] get-tree-commit)
+  (GET "/cli" [] cli-response))
 
 (defn start []
   (run-server #'all-routes {:port 3000}))
