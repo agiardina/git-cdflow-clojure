@@ -27,12 +27,13 @@
 (defn log 
   ([message] (log message [])) 
   ([message options]
-    (let [text (Text. (str message "\n"))
-          style (.getStyleClass text)
-          cls (map #(->> % name lower-case (str "message-")) options)] ; :ERROR becomes message-error
-      
-      (if (not-empty cls) (doall (map #(.add style %) cls)))
+    (if (resolve 'log-area)
+      (let [text (Text. (str message "\n"))
+            style (.getStyleClass text)
+            cls (map #(->> % name lower-case (str "message-")) options)] ; :ERROR becomes message-error
+        
+        (if (not-empty cls) (doall (map #(.add style %) cls)))
 
-      (.. log-area (getChildren) (add text)))))
+        (.. log-area (getChildren) (add text))))))
   
 

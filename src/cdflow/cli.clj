@@ -9,6 +9,7 @@
     (println (slurp (io/resource (str "help/" command ".txt")))))
 
 (defn release-list [path]
+    (git/git-fetch-notes! path)
     (doall (map println (git/get-releases-list path))))
 
 (defn release-start [path]
