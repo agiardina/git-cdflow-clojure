@@ -14,6 +14,7 @@
                  [org.clojure/tools.cli "0.3.5"]
                  [org.clojars.civa86/pretty.cli "1.0.1"]]
   :plugins [[cider/cider-nrepl "0.15.0"]]
+  :jvm-opts ["--add-modules" "java.xml.bind"]
   :main ^:skip-aot cdflow.core
   :aot :all
   :target-path "target/%s"

@@ -5,23 +5,26 @@
             [cdflow.git :as git]
             [cdflow.state :as state]
             [clojure.pprint :as pp])
-  (:import [javafx.event ActionEvent EventHandler]
-           [javafx.scene.input MouseEvent]
-           [javafx.stage Stage DirectoryChooser FileChooser StageStyle Window Modality]
-           [javafx.application Platform]
-           [javafx.scene Scene]
-           [javafx.scene.input KeyEvent KeyCode]
-           [javafx.scene.control TreeView TreeItem]
-           [javafx.scene.control.cell PropertyValueFactory]
-           [javafx.collections ObservableList]
-           [javafx.collections FXCollections]
-           [javafx.scene.control TableColumn]
-           [javafx.scene.control TableRow]
-           [javafx.util Callback]
-           [javafx.beans.property SimpleStringProperty]
-           [java.awt Desktop]
-           [java.util Date]
-           [java.text SimpleDateFormat]
+  (:import  [javafx.fxml FXMLLoader]
+            [javafx.event ActionEvent EventHandler]
+            [javafx.scene.input MouseEvent]
+            [javafx.stage Stage Popup DirectoryChooser FileChooser StageStyle Window Modality]
+            [javafx.application Platform]
+            [javafx.scene Scene]
+            [javafx.scene.input KeyEvent KeyCode]
+            [javafx.scene.control TreeView TreeItem Button Alert]
+            [javafx.scene.control.cell PropertyValueFactory]
+            [javafx.collections ObservableList]
+            [javafx.collections FXCollections]
+            [javafx.scene.control TableColumn]
+            [javafx.scene.control TableRow]
+            [javafx.util Callback]
+            [javafx.beans.property SimpleStringProperty]
+            [java.awt Desktop]
+            [java.util Date]
+            [java.text SimpleDateFormat]
+            [org.eclipse.jgit.api.MergeResult$MergeStatus]
+            [javafx.scene.control.Alert$AlertType]
            )
 
   (:gen-class
@@ -32,9 +35,30 @@
      [onReleasesMenuClick [javafx.scene.input.MouseEvent] void]
      [onBranchesMenuClick [javafx.scene.input.MouseEvent] void]
      [onParentPullClick [javafx.scene.input.MouseEvent] void]
-     [onFetchClick [javafx.scene.input.MouseEvent] void]]))
+     [onFetchClick [javafx.scene.input.MouseEvent] void]
+     [onNewReleaseClick [javafx.scene.input.MouseEvent] void]
+     [initialize [] void]
+     ]))
 
 (def current-stage (atom nil))
+
+(defn show-message [title text alert-type]
+  (doto 
+    (Alert. alert-type)
+    (.setTitle title)
+    (.setHeaderText nil)
+    (.setContentText text)
+    (.showAndWait)))
+
+(defn show-info [title text] 
+  (show-message title text javafx.scene.control.Alert$AlertType/INFORMATION))
+
+(defn show-error [title text] 
+  (show-message title text javafx.scene.control.Alert$AlertType/ERROR))
+
+(defn show-warning [title text] 
+  (show-message title text javafx.scene.control.Alert$AlertType/WARNING))
+    
 
 (defn create-item [item parent]
   (let [tree-item (TreeItem. item)]
@@ -79,6 +103,12 @@
   (let [releases     (FXCollections/observableArrayList (git/get-releases-list repo))]
     (.setItems listview releases)))
 
+(defn- enable-toolbar [scene] 
+  (let [toolbar (.lookup scene "#mainToolbar")
+       items (.getItems toolbar)
+       buttons (filter #(instance? Button %) items)]
+       (doall (map #(.setDisable % false) buttons))))
+
 (defn -onReleasesMenuClick [this ^MouseEvent event]
   (let [scene (.. event (getSource) (getScene))
         sidePanel (.lookup scene "#sidePanel")
@@ -108,7 +138,30 @@
   (git/git-fetch-and-merge-notes! (state/get-repository)))
 
 (defn -onParentPullClick [this ^MouseEvent event]
-  (git/parent-pull! (state/get-repository)))  
+  (let [merge-status (git/parent-pull! (state/get-repository))
+        sucessfull? (.isSuccessful merge-status)]
+    (cond
+      sucessfull?
+        (show-info "Parent Pull" "Parent merged with success")
+      (= merge-status org.eclipse.jgit.api.MergeResult$MergeStatus/CONFLICTING)
+        (show-warning "Parent Pull" "Merge conflict")
+      :else 
+        (show-error "Parent Pull" "Parent pull failed"))))  
+
+(defn -onNewReleaseClick [this ^MouseEvent event]
+  (let [node (FXMLLoader/load (io/resource "parent-window.fxml"))
+        scene (Scene. node)
+        stage (Stage.)
+        parent-branch (.lookup scene "#parentBranch")]
+
+  (.setItems parent-branch  (FXCollections/observableArrayList 
+                              (git/remote-branch-list
+                                (state/get-repository))))        
+
+  (doto stage
+    (.setTitle "New Relase")
+    (.setScene scene)
+    (.show))))
 
 (defn -onOpen [this ^ActionEvent event]
   (let [chooser (doto (DirectoryChooser.)
@@ -128,5 +181,13 @@
     (showBranches (.lookup scene "#branchesorigin") repo :remote)
     (show-releases (.lookup scene "#releases") repo)
     (show-commits scene repo)
+    (enable-toolbar scene)
 
     (.load engine (.toString (io/resource "tree/index.html")))))
+
+(defn -initialize [el]
+  ;Event on local repository
+  (state/on-local-repository-change :enable-toolbar 
+    (fn [key reference old-state new-state]
+      (clojure.pprint/pprint new-state))))
+
