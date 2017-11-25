@@ -28,6 +28,8 @@
 
 (defn -main [& args]
 
+  ;(load-file "resources/plugins/new-release-json.clj")
+
   (let [options (parse-opts args cli-options)]
     (if (nil? (get-in options [:options :no-server]))
       (start-server))

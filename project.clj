@@ -12,6 +12,7 @@
                  [compojure "1.6.0"]
                  [org.clojure/data.json "0.2.6"]
                  [org.clojure/tools.cli "0.3.5"]
+                 [org.clojure/core.async "0.3.465"]
                  [org.clojars.civa86/pretty.cli "1.0.1"]]
   :plugins [[cider/cider-nrepl "0.15.0"]]
   :jvm-opts ["--add-modules" "java.xml.bind"]

@@ -28,7 +28,7 @@
    <top>
       <VBox>
          <children>
-              <MenuBar id="menuBar" focusTraversable="true" BorderPane.alignment="CENTER">
+              <MenuBar id="menuBar" fx:id="menuBar" focusTraversable="true" BorderPane.alignment="CENTER">
                   <menus>
                       <Menu text="File">
                           <items>
@@ -37,6 +37,11 @@
                               <MenuItem text="Exit" />
                           </items>
                       </Menu>
+                  <Menu fx:id="settingsMenu" mnemonicParsing="false" text="Settings">
+                    <items>
+                      <MenuItem mnemonicParsing="false" text="Action 1" />
+                    </items>
+                  </Menu>
                       <Menu text="Help">
                           <items>
                               <MenuItem disable="true" text="Search" />

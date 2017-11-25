@@ -200,7 +200,7 @@
       (re-matches #"^v[0-9]{1,3}$" vname) (str "release/" vname ".0.0")
       (re-matches #"^v[0-9]{1,2}\.[0-9]{1,2}$" vname) (str "release/" vname ".0")
       (re-matches #"^v[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}$" vname) (str "release/" vname)
-      :else (throw (Exception. "Not a valid release version!")))))
+      :else nil)))
 
 (defn feature-name [name]
   (as-> name $
@@ -425,9 +425,9 @@
 
 (defn release-checkout! [repo-path version]
   (git/with-repo repo-path
-    (->> version
-         release-name
-         (git-checkout-branch! repo-path))))
+    (some->> version
+             release-name
+             (git-checkout-branch! repo-path))))
 
 (defn release-start! [repo-path from to]
   (let [source (release-name from)

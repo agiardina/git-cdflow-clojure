@@ -24,7 +24,7 @@
             <Insets left="20.0" />
          </padding>
       </Label>
-      <TextField prefHeight="27.0" prefWidth="204.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
+      <TextField fx:id="release" prefHeight="27.0" prefWidth="204.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
          <GridPane.margin>
             <Insets />
          </GridPane.margin>
@@ -37,8 +37,8 @@
       <ChoiceBox fx:id="parentBranch" prefHeight="27.0" prefWidth="278.0" GridPane.columnIndex="1" />
       <HBox alignment="CENTER_RIGHT" prefHeight="75.0" prefWidth="262.0" GridPane.columnIndex="1" GridPane.halignment="RIGHT" GridPane.rowIndex="2" GridPane.valignment="BASELINE">
          <children>
-            <Button cancelButton="true" mnemonicParsing="false" prefHeight="27.0" prefWidth="66.0" text="Cancel" />
-            <Button defaultButton="true" mnemonicParsing="false" prefHeight="27.0" prefWidth="66.0" text="Save">
+            <Button cancelButton="true" mnemonicParsing="false" onMouseClicked="#onCancelCloseWindow" prefHeight="27.0" prefWidth="66.0" text="Cancel" />
+            <Button defaultButton="true" mnemonicParsing="false" onMouseClicked="#onSaveNewReleaseClick" prefHeight="27.0" prefWidth="66.0" text="Save">
                <HBox.margin>
                   <Insets left="10.0" />
                </HBox.margin>

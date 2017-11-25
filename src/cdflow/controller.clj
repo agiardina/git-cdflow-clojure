@@ -4,7 +4,9 @@
             [cdflow.gui :as gui]
             [cdflow.git :as git]
             [cdflow.state :as state]
-            [clojure.pprint :as pp])
+            [clojure.pprint :as pp]
+            [clojure.core.async :as async])
+
   (:import  [javafx.fxml FXMLLoader]
             [javafx.event ActionEvent EventHandler]
             [javafx.scene.input MouseEvent]
@@ -37,6 +39,8 @@
      [onParentPullClick [javafx.scene.input.MouseEvent] void]
      [onFetchClick [javafx.scene.input.MouseEvent] void]
      [onNewReleaseClick [javafx.scene.input.MouseEvent] void]
+     [onSaveNewReleaseClick [javafx.scene.input.MouseEvent] void]
+     [onCancelCloseWindow [javafx.scene.input.MouseEvent] void]
      [initialize [] void]
      ]))
 
@@ -163,6 +167,23 @@
     (.setScene scene)
     (.show))))
 
+(defn -onSaveNewReleaseClick [this ^MouseEvent event]
+  (let [scene (.. event (getSource) (getScene))
+        release (.. scene (lookup "#release") (getText))
+        parent-branch (.. scene (lookup "#parentBranch") (getValue))
+        release-name (git/release-name release)] 
+
+    (cond 
+      (nil? release-name)
+        (show-error "New Release" "Invalid release name (eg release/v1.2.0)")
+      (nil? parent-branch)
+        (show-error "New Release" "Please, select a parent branch")
+      :else
+        (do (git/release-start! (state/get-repository) parent-branch release-name)
+            (show-info "New Release" (str "Branch " release-name " created"))
+            (.. scene (getWindow) (close)))
+      )))
+
 (defn -onOpen [this ^ActionEvent event]
   (let [chooser (doto (DirectoryChooser.)
                       (.setTitle "Import"))
@@ -185,9 +206,11 @@
 
     (.load engine (.toString (io/resource "tree/index.html")))))
 
+(defn -onCancelCloseWindow[this ^MouseEvent event]
+  (.. event (getSource) (getScene) (getWindow) (close)))    
+
 (defn -initialize [el]
   ;Event on local repository
   (state/on-local-repository-change :enable-toolbar 
     (fn [key reference old-state new-state]
       (clojure.pprint/pprint new-state))))
-

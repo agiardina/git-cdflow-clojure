@@ -1,5 +1,6 @@
 (ns cdflow.gui
-  (:require [clojure.java.io :as io]
+  (:require [cdflow.eventbus :as eventbus]
+            [clojure.java.io :as io]
             [clojure.pprint]
             [clojure.string :refer [lower-case]])
   (:import [javafx.application Application]
@@ -22,6 +23,8 @@
           (.setTitle "Git CDFlow")
           (.setScene scene)
           (.show))
+
+    (eventbus/publish :gui-ready scene)
 
 ;    (cond (str/starts-with? (str (System/getProperty "os.name")) "Mac")
 ;      (.set (.useSystemMenuBarProperty (.lookup scene "#menuBar") true)))
