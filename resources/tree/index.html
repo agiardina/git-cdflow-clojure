@@ -59,14 +59,6 @@ function showTree (commit) {
         root = json;
         root.x0 = h / 2;
         root.y0 = 0;
-
-        function toggleAll(d) {
-            if (d.children) {
-                d.children.forEach(toggleAll);
-                toggle(d);
-            }
-        }
-
         update(root);
     });
 
@@ -88,7 +80,7 @@ function showTree (commit) {
             .attr("class", "node")
             .attr("transform", function(d) { return "translate(" + source.y0 + "," + source.x0 + ")"; })
             .on("click", function(d) {
-                console.log(d)
+                // console.log(d)
                 if (d['commit-id']) {
                     showCommitInBranches(d['commit-id'])
                 }
