@@ -16,6 +16,7 @@
              "Access-Control-Allow-Origin" "*"}
    :body (-> (state/get-repository)
              (git/notes->tree)
+             (git/decorate-tree-with-commit-id (state/get-repository))
              (json/write-str))})
 
 (defn get-tree-commit [req]

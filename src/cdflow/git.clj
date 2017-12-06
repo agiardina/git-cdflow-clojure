@@ -5,6 +5,7 @@
             [clj-jgit.porcelain :as git]
             [clj-jgit.internal :as git-internal]
             [clojure.pprint])
+  (:use [clojure.walk :only [postwalk]])
   (:import [java.lang String]
            [java.nio.charset StandardCharsets]
            [org.eclipse.jgit.lib ObjectInserter CommitBuilder PersonIdent]
@@ -28,7 +29,7 @@
     (branch-list repo-path :local)))
 
 (defn remote-branch-list [repo-path]
-  (->> 
+  (->>
       (branch-list repo-path :remote)
       (map #(str/replace % #"refs/remotes/origin/" ""))
       (filter #(not= % "HEAD"))))
@@ -250,10 +251,24 @@
                   (format-parents-children {} $))))
     (catch Exception e {})))
 
+(defn decorate-tree-with-commit-id [tree repo-path]
+  (git/with-repo repo-path
+    (postwalk (fn [elem]
+      (if (not (nil? (get elem :name)))
+        (let [ref (get elem :name)
+              commit-hash (get-commit-id repo ref)]
+              (if (not (nil? commit-hash))
+                (assoc elem :commit-id (.getName commit-hash))
+                (let [remote-commit-hash (get-commit-id repo (str "refs/remotes/origin/" ref))]
+                  (if (not (nil? remote-commit-hash))
+                    (assoc elem :commit-id (.getName remote-commit-hash))
+                    (assoc elem :commit-id nil)))))
+        elem)) tree)))
+
 (defn add-el [node] (if (map? node) (assoc node :test "me") node))
 
 (defn get-origin-url [repo]
-  (-> repo 
+  (-> repo
     (.getRepository)
     (.getConfig)
     (.getString "remote" "origin" "url")))
@@ -281,7 +296,7 @@
   ([repo-path]
    (git-fetch-notes! repo-path "origin"))
   ([repo-path remote]
-    (git/with-repo repo-path 
+    (git/with-repo repo-path
       (log (str "Fetching notes from " (get-origin-url repo)))
       (git/git-fetch repo remote "refs/notes/cdflow:refs/notes/origin/cdflow"))))
 
@@ -307,9 +322,9 @@
 (defn git-merge-notes!
   ([repo-path remote]
     (git/with-repo repo-path
-    
+
     (log "Merging notes")
-    
+
     (let [repository (.getRepository repo)
           notes-local-repo (.getRef repository "refs/notes/cdflow")
           notes-origin-repo (.getRef repository "refs/notes/origin/cdflow")]
@@ -339,12 +354,12 @@
 
             (cond
               (= commit-origin base) ;Already Updated
-                (do 
-                  (log "Notes already updated") 
+                (do
+                  (log "Notes already updated")
                   true)
               (= commit-local base) ;Fast forward
-                (do 
-                  (log "Notes fast forward") 
+                (do
+                  (log "Notes fast forward")
                   (update-ref! repo "refs/notes/cdflow" (.getObjectId notes-origin-repo)))
               :else
                 (do
@@ -391,11 +406,11 @@
             merge-result (git/git-merge repo parent-commit-id)
             merge-status (.getMergeStatus merge-result)
             merge-success (.isSuccessful merge-status)]
-            
+
             (if merge-success
               (log "Merge completed with success" [:success])
               (log (str "Merge failed wiith status " merge-status) [:error]))
-              
+
              merge-status)))) ;Return the merge status
 
 (defn parent-set! [repo-path branch]
