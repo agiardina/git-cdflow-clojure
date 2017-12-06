@@ -88,7 +88,8 @@ function showTree (commit) {
             .attr("class", "node")
             .attr("transform", function(d) { return "translate(" + source.y0 + "," + source.x0 + ")"; })
             .on("click", function(d) {
-                if (d['commit-id'] !== null) {
+                console.log(d)
+                if (d['commit-id']) {
                     showCommitInBranches(d['commit-id'])
                 }
             });
