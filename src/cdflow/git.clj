@@ -163,16 +163,6 @@
             (compare (first split1) (first split2)))))
         (map #(str "v" %))))
 
-(defn- branch-exists?
-  ([repo-path branch]
-    (branch-exists? repo-path branch :all))
-  ([repo-path branch location]
-    (->>  (branch-list repo-path location)
-          (map #(str/replace % #"refs\/remotes\/origin\/" ""))
-          (filter #(= % branch))
-          (count)
-          (< 0))))
-
 (defn- git-notes-add! [repo message ref commit]
   (-> repo
     .notesAdd
@@ -181,18 +171,29 @@
     (.setObjectId commit)
     .call))
 
-(defn- git-push-notes! [repo ref]
-  (-> repo
-    .push
-    (.add (str "refs/notes/" ref))
-    (.setRemote "origin")
-    .call))
-
 (defn- git-push! [repo]
   (-> repo
     .push
     (.setRemote "origin")
     .call))
+
+(defn git-push-notes! [repo-path ref]
+  (git/with-repo repo-path
+    (-> repo
+      .push
+      (.add (str "refs/notes/" ref))
+      (.setRemote "origin")
+      .call)))
+
+(defn branch-exists?
+  ([repo-path branch]
+    (branch-exists? repo-path branch :all))
+  ([repo-path branch location]
+    (->>  (branch-list repo-path location)
+          (map #(str/replace % #"refs\/remotes\/origin\/" ""))
+          (filter #(= % branch))
+          (count)
+          (< 0))))
 
 (defn release-name [name]
   (let [sname (-> (str name) (str/split #"\/") last)
@@ -209,6 +210,7 @@
         (str/split $ #"\/")
         (last $)
         (str "feature/" $)))
+
 (defn git-checkout-branch! [repo-path branch]
   (git/with-repo repo-path
     (if (branch-exists? repo-path branch :local)
@@ -414,6 +416,8 @@
              merge-status)))) ;Return the merge status
 
 (defn parent-set! [repo-path branch]
+  ;TODO it seems that parent set doen't clean old notes! check ALL notes of EVERY object!!!
+
   (if (branch-exists? repo-path branch)
     (git/with-repo repo-path
       (let [current-branch (git/git-branch-current repo)]
@@ -426,7 +430,7 @@
           (map #(str "[" % "]") $)
           (str/join "\n" $)
           (git-notes-add! repo $ "cdflow" (get-head-commit-object repo)))))
-    (throw (Exception. (str "Branch " branch " doesn't exist!")))))
+    (throw (Exception. (str "Branch " branch " doesn't exist in this repository")))))
 
 (defn get-releases-list [repo-path]
   (git/with-repo repo-path
@@ -445,7 +449,7 @@
              (git-checkout-branch! repo-path))))
 
 (defn release-start! [repo-path from to]
-  (let [source (release-name from)
+  (let [source from
         target (release-name to)]
     (if (and (branch-exists? repo-path source) (git-fetch-and-merge-notes! repo-path))
       (git/with-repo repo-path
@@ -454,9 +458,9 @@
         (if (not (branch-exists? repo-path target)) (git/git-branch-create repo target))
         (git-checkout-branch! repo-path target)
         (parent-set! repo-path source)
-        (git-push-notes! repo "cdflow")
+        (git-push-notes! repo-path "cdflow")
         (git-push! repo))
-      (throw (Exception. (str "Branch " source " doesn't exist!"))))))
+      (throw (Exception. (str "Branch " source " doesn't exist in this repository"))))))
 
 (defn feature-checkout! [repo-path name]
   (git/with-repo repo-path
