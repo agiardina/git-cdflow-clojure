@@ -141,9 +141,12 @@
       (.resolve ref)))
 
 (defn get-head-commit-object [repo]
-  (let [repository (-> repo .getRepository)
+  (let [rev-walk (git-internal/new-rev-walk repo)
+        repository (-> repo .getRepository)
         head-id (-> repository (.resolve "HEAD"))]
-    (-> (RevWalk. repository) (.parseCommit head-id))))
+    (try
+      (.parseCommit rev-walk head-id)
+      (finally (close-rev-walk rev-walk)))))
 
 (defn- get-git-directory-path [repo]
   (-> repo
@@ -176,6 +179,40 @@
     .push
     (.setRemote "origin")
     .call))
+
+;@todo this method exists in a new version of clj-jgit....
+(defn- close-rev-walk [rev-walk]
+  (when (instance? org.eclipse.jgit.revwalk.RevWalk rev-walk)
+    (.release rev-walk)))
+
+(defn- objectid->commit [repo id]
+  (let [rev-walk (git-internal/new-rev-walk repo)]
+    (try
+      (git-internal/bound-commit repo rev-walk id)
+      (finally (close-rev-walk rev-walk)))))
+
+(defn- clean-parent-from-notes [repo]
+  (let [repository (.getRepository repo)
+        current-branch (git/git-branch-current repo)
+        notes-objects (.call (.setNotesRef (.notesList repo) "refs/notes/cdflow"))]
+    (doseq [n notes-objects :let [data (.getData n)
+                                  notes (-> (String. (.getBytes (.open repository data)) (StandardCharsets/UTF_8))
+                                            (str/split #"\n"))]]
+      (as-> notes $
+        (filter #(not (str/includes? % (str " -> " current-branch))) $)
+        (str/join "\n" $)
+        (git-notes-add! repo $ "cdflow" (objectid->commit repo n))))))
+
+(defn- get-commit-note [repo commit-id]
+  (let [repository (.getRepository repo)
+        n (as-> (.call (.setNotesRef (.notesList repo) "refs/notes/cdflow")) $
+                (filter #(= (.getName %) commit-id) $)
+                (first $))]
+    (if (nil? n)
+      []
+      (as-> n $
+          (String. (.getBytes (.open repository (.getData $))) (StandardCharsets/UTF_8))
+          (str/split $ #"\n")))))
 
 (defn git-push-notes! [repo-path ref]
   (git/with-repo repo-path
@@ -310,14 +347,16 @@
 
 (defn get-merge-base [repo-path commit-a commit-b]
   (git/with-repo repo-path
-                 (let [walk (git-internal/new-rev-walk repo)
-                       rev-a (.lookupCommit walk (git-internal/resolve-object commit-a repo))
-                       rev-b (.lookupCommit walk (git-internal/resolve-object commit-b repo))]
-                   (doto walk
-                         (.setRevFilter RevFilter/MERGE_BASE)
-                         (.markStart rev-a)
-                         (.markStart rev-b))
-                   (.next walk))))
+    (let [walk (git-internal/new-rev-walk repo)
+          rev-a (.lookupCommit walk (git-internal/resolve-object commit-a repo))
+          rev-b (.lookupCommit walk (git-internal/resolve-object commit-b repo))]
+      (try
+        (doto walk
+          (.setRevFilter RevFilter/MERGE_BASE)
+          (.markStart rev-a)
+          (.markStart rev-b))
+        (.next walk)
+        (finally (close-rev-walk walk))))))
 
 ;@todo refactor this method
 ;@todo get the right person from the git config
@@ -353,33 +392,33 @@
                 base (get-merge-base repo-path commit-local commit-origin)
                 base-note (if base (NoteMap/read reader base) empty)
                 result (.merge merger base-note ours theirs)]
+            (try
+              (cond
+                (= commit-origin base) ;Already Updated
+                  (do
+                    (log "Notes already updated")
+                    true)
+                (= commit-local base) ;Fast forward
+                  (do
+                    (log "Notes fast forward")
+                    (update-ref! repo "refs/notes/cdflow" (.getObjectId notes-origin-repo)))
+                :else
+                  (do
+                    (doto commit-builder
+                      (.setTreeId (.writeTree result inserter))
+                      (.setCommitter person)
+                      (.setAuthor person)
+                      (.setMessage "CDFlow Merge Notes")
+                      (.setParentIds commit-local commit-origin))
 
-            (cond
-              (= commit-origin base) ;Already Updated
-                (do
-                  (log "Notes already updated")
-                  true)
-              (= commit-local base) ;Fast forward
-                (do
-                  (log "Notes fast forward")
-                  (update-ref! repo "refs/notes/cdflow" (.getObjectId notes-origin-repo)))
-              :else
-                (do
-                  (doto commit-builder
-                    (.setTreeId (.writeTree result inserter))
-                    (.setCommitter person)
-                    (.setAuthor person)
-                    (.setMessage "CDFlow Merge Notes")
-                    (.setParentIds commit-local commit-origin))
+                      (log "Notes merged")
+                      (log (str (subs (.getName commit-local) 0 7) ".." (subs (.getName commit-origin) 0 7)))
 
-                    (log "Notes merged")
-                    (log (str (subs (.getName commit-local) 0 7) ".." (subs (.getName commit-origin) 0 7)))
+                      (update-ref! repo "refs/notes/cdflow" (.insert inserter commit-builder))))
 
-                    (update-ref! repo "refs/notes/cdflow" (.insert inserter commit-builder))))
-
-                (.flush inserter)
-                true
-                )))))
+                  (.flush inserter)
+                  true
+              (finally (close-rev-walk walk))))))))
 
   ([repo-path]
    (git-merge-notes! repo-path "origin")))
@@ -416,20 +455,16 @@
              merge-status)))) ;Return the merge status
 
 (defn parent-set! [repo-path branch]
-  ;TODO it seems that parent set doen't clean old notes! check ALL notes of EVERY object!!!
-
   (if (branch-exists? repo-path branch)
     (git/with-repo repo-path
-      (let [current-branch (git/git-branch-current repo)]
-        (as-> (parse-git-notes repo-path) $
-          (map #(str/split % #"->") $)
-          (map #(map (fn [x] (str/replace (str/trim x) #"\[|\]" "")) %) $)
-          (filter #(not (str/includes? (second %) current-branch)) $)
-          (concat $ [[branch current-branch]])
-          (map #(str/join " -> " %) $)
-          (map #(str "[" % "]") $)
-          (str/join "\n" $)
-          (git-notes-add! repo $ "cdflow" (get-head-commit-object repo)))))
+      (let [current-branch (git/git-branch-current repo)
+            repository (.getRepository repo)
+            head-commit (get-head-commit-object repo)]
+        (clean-parent-from-notes repo)
+        (as-> (get-commit-note repo (.getName head-commit)) $
+              (conj $ (str "[" branch " -> " current-branch "]"))
+              (str/join "\n" $)
+              (git-notes-add! repo $ "cdflow" head-commit))))
     (throw (Exception. (str "Branch " branch " doesn't exist in this repository")))))
 
 (defn get-releases-list [repo-path]

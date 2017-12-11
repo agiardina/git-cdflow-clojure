@@ -33,7 +33,10 @@
 
 (defn parent-show [path]
     (try
-        (println (git/get-parent path))
+        (let [parent (git/get-parent path)]
+            (if (nil? parent)
+                (exit-with-error "Error: Parent has not been set.\nUsage: git cdflow parent set <PARENT_BRANCH>")
+                (println parent)))
         (catch Exception e (exit-with-error (.getMessage e)))))
 
 (defn parent-pull [path]
