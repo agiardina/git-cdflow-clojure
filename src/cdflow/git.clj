@@ -17,6 +17,11 @@
 ;@fixme is the right place where to put this code? Is the code that we want?
 (System/setProperty "jsse.enableSNIExtension" "false")
 
+;@todo this method exists in a new version of clj-jgit....
+(defn- close-rev-walk [rev-walk]
+  (when (instance? org.eclipse.jgit.revwalk.RevWalk rev-walk)
+    (.release rev-walk)))
+
 (defn get-branch-name-from-ref [ref]
   (str/replace-first (.getName ref) "refs/heads/" ""))
 
@@ -179,11 +184,6 @@
     .push
     (.setRemote "origin")
     .call))
-
-;@todo this method exists in a new version of clj-jgit....
-(defn- close-rev-walk [rev-walk]
-  (when (instance? org.eclipse.jgit.revwalk.RevWalk rev-walk)
-    (.release rev-walk)))
 
 (defn- objectid->commit [repo id]
   (let [rev-walk (git-internal/new-rev-walk repo)]
@@ -496,6 +496,15 @@
         (git-push-notes! repo-path "cdflow")
         (git-push! repo))
       (throw (Exception. (str "Branch " source " doesn't exist in this repository"))))))
+
+(defn get-features-list [repo-path]
+  (git/with-repo repo-path
+    (->>  (branch-list repo-path :all)
+          (filter #(str/includes? % "feature/"))
+          (map #(str/replace % #"refs\/remotes\/origin\/" ""))
+          set
+          (into [])
+          sort)))
 
 (defn feature-checkout! [repo-path name]
   (git/with-repo repo-path
