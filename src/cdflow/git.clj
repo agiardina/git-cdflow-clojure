@@ -254,18 +254,20 @@
       (git/git-checkout repo branch)
       (git/git-checkout repo branch true))))
 
-(defn get-all-commits [repo-path]
+(defn get-all-ref-commits [repo-path]
   (git/with-repo repo-path
     (->> repo
-      git/git-log
-      (map (fn [x] {:commit (.getName x)
+          .log
+          .all
+          .call
+          seq)))
+
+(defn human-readable-commits [commits-collection]
+  (map (fn [x] {:commit (.getName x)
                     :message (.getFullMessage x)
                     :time (.getCommitTime x)
                     :author {:name (.getName (.getAuthorIdent x))
-                             :email (.getEmailAddress (.getAuthorIdent x))}})))))
-
-(defn get-all-ref-commits [repo-path]
-  (git/with-repo repo-path (->> repo git/git-log)))
+                             :email (.getEmailAddress (.getAuthorIdent x))}}) commits-collection))
 
 (defn parse-git-notes [repo-path]
   (try
