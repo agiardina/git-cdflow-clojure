@@ -39,7 +39,7 @@
                       </Menu>
                   <Menu fx:id="settingsMenu" mnemonicParsing="false" text="Settings">
                     <items>
-                      <MenuItem mnemonicParsing="false" text="Action 1" />
+                      <MenuItem fx:id="postReleaseMenu" mnemonicParsing="false" onAction="#onPostReleaseSettingsClick" text="Post Release Hook" />
                     </items>
                   </Menu>
                       <Menu text="Help">

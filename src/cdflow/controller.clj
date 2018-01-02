@@ -33,13 +33,14 @@
     :methods
     [[onLoad [javafx.event.ActionEvent] void]
      [onOpen [javafx.event.ActionEvent] void]
+     [onPostReleaseSettingsClick [javafx.event.ActionEvent] void]
      [onSelectCommit [javafx.scene.input.MouseEvent] void]
      [onReleasesMenuClick [javafx.scene.input.MouseEvent] void]
      [onBranchesMenuClick [javafx.scene.input.MouseEvent] void]
      [onParentPullClick [javafx.scene.input.MouseEvent] void]
      [onFetchClick [javafx.scene.input.MouseEvent] void]
      [onNewReleaseClick [javafx.scene.input.MouseEvent] void]
-     [onSaveNewReleaseClick [javafx.scene.input.MouseEvent] void]
+     [onSaveNewReleaseClick [javafx.scene.input.MouseEvent] void]     
      [onCancelCloseWindow [javafx.scene.input.MouseEvent] void]
      [initialize [] void]
      ]))
@@ -112,6 +113,16 @@
        items (.getItems toolbar)
        buttons (filter #(instance? Button %) items)]
        (doall (map #(.setDisable % false) buttons))))
+
+(defn -onPostReleaseSettingsClick [this ^ActionEvent event]
+  (let [node (FXMLLoader/load (io/resource "post-release.fxml"))
+        scene (Scene. node)
+        stage (Stage.)]
+
+  (doto stage
+    (.setTitle "Update version JSON")
+    (.setScene scene)
+    (.show))))
 
 (defn -onReleasesMenuClick [this ^MouseEvent event]
   (let [scene (.. event (getSource) (getScene))
