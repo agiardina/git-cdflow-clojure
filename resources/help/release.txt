@@ -1,37 +1,37 @@
 
 usage: git cdflow release list
-       git cdflow release start [--no-push] <release> <parent>
+       git cdflow release start <release> <parent>
        git cdflow release checkout <release>
 
-       list       Show the list of release branches available on origin.                         
-                  Local branches are ignored and branches with wrong syntax are                  
-                  ignored. In order to be considered a valid release branch,                     
-                  the branch has to match the following name convention:                         
-                  release/v[major].[minor].[maintenance], eg. release/v9.1.0                     
-                                                                                                 
-        start     Start a new release.                                                           
-                  The <release> parameter is mandatory but it's possible                         
+       list       Show the list of release branches available on origin.
+                  Local branches are ignored and branches with wrong syntax are
+                  ignored. In order to be considered a valid release branch,
+                  the branch has to match the following name convention:
+                  release/v[major].[minor].[maintenance], eg. release/v9.1.0
+
+        start     Start a new release.
+                  The <release> parameter is mandatory but it's possible
                   to specify partial release name.
 
-                  All the following release names are valid: v8.2.3, 8, 8.2, 8.2.3.              
-                  In all the above scenarios the branch release/v8.2.3 will be                   
-                  created.                                                                       
-                                                                                                 
-                  The <parent> parameter is mandatory but it's possible                         
-                  to specify partial parent name. 
-                                                                                                 
-                  The <parent> branch must be present on origin and it has to follow 
+                  All the following release names are valid: v8.2.3, 8, 8.2, 8.2.3.
+                  In all the above scenarios the branch release/v8.2.3 will be
+                  created.
+
+                  The <parent> parameter is mandatory but it's possible
+                  to specify partial parent name.
+
+                  The <parent> branch must be present on origin and it has to follow
                   right name convention (see "git cdflow release list"). The parent
                   can be a feature branch or a release branch. If partial name is provided
-                  release is assumed. 
+                  release is assumed.
 
-                  The --no-push option is intended for debugging purpose only                  
-                                                                                                 
-                  Example usage:                                                                 
-                  git cdflow release start 10 9.2 
-                  git cdflow release start 11 feature/my-amazing-feature 
+                  The --no-push option is intended for debugging purpose only
 
-         checkout Checkout a release branch. 
-                  
-                  Example usage:                                                                 
+                  Example usage:
+                  git cdflow release start 10 9.2
+                  git cdflow release start 11 feature/my-amazing-feature
+
+         checkout Checkout a release branch.
+
+                  Example usage:
                   git cdflow release checkout 10

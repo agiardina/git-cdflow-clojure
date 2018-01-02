@@ -5,6 +5,7 @@
             [clj-jgit.porcelain :as git]
             [clj-jgit.internal :as git-internal]
             [clojure.pprint])
+  (:use [clojure.walk :only [postwalk]])
   (:import [java.lang String]
            [java.nio.charset StandardCharsets]
            [org.eclipse.jgit.lib ObjectInserter CommitBuilder PersonIdent]
@@ -15,6 +16,11 @@
 
 ;@fixme is the right place where to put this code? Is the code that we want?
 (System/setProperty "jsse.enableSNIExtension" "false")
+
+;@todo this method exists in a new version of clj-jgit....
+(defn- close-rev-walk [rev-walk]
+  (when (instance? org.eclipse.jgit.revwalk.RevWalk rev-walk)
+    (.release rev-walk)))
 
 (defn get-branch-name-from-ref [ref]
   (str/replace-first (.getName ref) "refs/heads/" ""))
@@ -28,7 +34,7 @@
     (branch-list repo-path :local)))
 
 (defn remote-branch-list [repo-path]
-  (->> 
+  (->>
       (branch-list repo-path :remote)
       (map #(str/replace % #"refs/remotes/origin/" ""))
       (filter #(not= % "HEAD"))))
@@ -140,9 +146,12 @@
       (.resolve ref)))
 
 (defn get-head-commit-object [repo]
-  (let [repository (-> repo .getRepository)
+  (let [rev-walk (git-internal/new-rev-walk repo)
+        repository (-> repo .getRepository)
         head-id (-> repository (.resolve "HEAD"))]
-    (-> (RevWalk. repository) (.parseCommit head-id))))
+    (try
+      (.parseCommit rev-walk head-id)
+      (finally (close-rev-walk rev-walk)))))
 
 (defn- get-git-directory-path [repo]
   (-> repo
@@ -162,16 +171,6 @@
             (compare (first split1) (first split2)))))
         (map #(str "v" %))))
 
-(defn- branch-exists?
-  ([repo-path branch]
-    (branch-exists? repo-path branch :all))
-  ([repo-path branch location]
-    (->>  (branch-list repo-path location)
-          (map #(str/replace % #"refs\/remotes\/origin\/" ""))
-          (filter #(= % branch))
-          (count)
-          (< 0))))
-
 (defn- git-notes-add! [repo message ref commit]
   (-> repo
     .notesAdd
@@ -180,18 +179,58 @@
     (.setObjectId commit)
     .call))
 
-(defn- git-push-notes! [repo ref]
-  (-> repo
-    .push
-    (.add (str "refs/notes/" ref))
-    (.setRemote "origin")
-    .call))
-
 (defn- git-push! [repo]
   (-> repo
     .push
     (.setRemote "origin")
     .call))
+
+(defn- objectid->commit [repo id]
+  (let [rev-walk (git-internal/new-rev-walk repo)]
+    (try
+      (git-internal/bound-commit repo rev-walk id)
+      (finally (close-rev-walk rev-walk)))))
+
+(defn- clean-parent-from-notes [repo]
+  (let [repository (.getRepository repo)
+        current-branch (git/git-branch-current repo)
+        notes-objects (.call (.setNotesRef (.notesList repo) "refs/notes/cdflow"))]
+    (doseq [n notes-objects :let [data (.getData n)
+                                  notes (-> (String. (.getBytes (.open repository data)) (StandardCharsets/UTF_8))
+                                            (str/split #"\n"))]]
+      (as-> notes $
+        (filter #(not (str/includes? % (str " -> " current-branch))) $)
+        (str/join "\n" $)
+        (git-notes-add! repo $ "cdflow" (objectid->commit repo n))))))
+
+(defn- get-commit-note [repo commit-id]
+  (let [repository (.getRepository repo)
+        n (as-> (.call (.setNotesRef (.notesList repo) "refs/notes/cdflow")) $
+                (filter #(= (.getName %) commit-id) $)
+                (first $))]
+    (if (nil? n)
+      []
+      (as-> n $
+          (String. (.getBytes (.open repository (.getData $))) (StandardCharsets/UTF_8))
+          (str/split $ #"\n")))))
+
+(defn git-push-notes! [repo-path ref]
+  (git/with-repo repo-path
+    (-> repo
+      .push
+      (.add (str "refs/notes/" ref))
+      (.setRemote "origin")
+      .call)))
+
+(defn branch-exists?
+  ([repo-path branch]
+    (branch-exists? repo-path branch :all))
+  ([repo-path branch location]
+    (->>  (branch-list repo-path location)
+          (map #(str/replace % #"refs\/remotes\/origin\/" ""))
+          (filter #(= % branch))
+          (count)
+          (< 0))))
 
 (defn release-name [name]
   (let [sname (-> (str name) (str/split #"\/") last)
@@ -208,24 +247,27 @@
         (str/split $ #"\/")
         (last $)
         (str "feature/" $)))
+
 (defn git-checkout-branch! [repo-path branch]
   (git/with-repo repo-path
     (if (branch-exists? repo-path branch :local)
       (git/git-checkout repo branch)
       (git/git-checkout repo branch true))))
 
-(defn get-all-commits [repo-path]
+(defn get-all-ref-commits [repo-path]
   (git/with-repo repo-path
     (->> repo
-      git/git-log
-      (map (fn [x] {:commit (.getName x)
+          .log
+          .all
+          .call
+          seq)))
+
+(defn human-readable-commits [commits-collection]
+  (map (fn [x] {:commit (.getName x)
                     :message (.getFullMessage x)
                     :time (.getCommitTime x)
                     :author {:name (.getName (.getAuthorIdent x))
-                             :email (.getEmailAddress (.getAuthorIdent x))}})))))
-
-(defn get-all-ref-commits [repo-path]
-  (git/with-repo repo-path (->> repo git/git-log)))
+                             :email (.getEmailAddress (.getAuthorIdent x))}}) commits-collection))
 
 (defn parse-git-notes [repo-path]
   (try
@@ -250,10 +292,24 @@
                   (format-parents-children {} $))))
     (catch Exception e {})))
 
+(defn decorate-tree-with-commit-id [tree repo-path]
+  (git/with-repo repo-path
+    (postwalk (fn [elem]
+      (if (not (nil? (get elem :name)))
+        (let [ref (get elem :name)
+              commit-hash (get-commit-id repo ref)]
+              (if (not (nil? commit-hash))
+                (assoc elem :commit-id (.getName commit-hash))
+                (let [remote-commit-hash (get-commit-id repo (str "refs/remotes/origin/" ref))]
+                  (if (not (nil? remote-commit-hash))
+                    (assoc elem :commit-id (.getName remote-commit-hash))
+                    (assoc elem :commit-id nil)))))
+        elem)) tree)))
+
 (defn add-el [node] (if (map? node) (assoc node :test "me") node))
 
 (defn get-origin-url [repo]
-  (-> repo 
+  (-> repo
     (.getRepository)
     (.getConfig)
     (.getString "remote" "origin" "url")))
@@ -281,7 +337,7 @@
   ([repo-path]
    (git-fetch-notes! repo-path "origin"))
   ([repo-path remote]
-    (git/with-repo repo-path 
+    (git/with-repo repo-path
       (log (str "Fetching notes from " (get-origin-url repo)))
       (git/git-fetch repo remote "refs/notes/cdflow:refs/notes/origin/cdflow"))))
 
@@ -293,23 +349,25 @@
 
 (defn get-merge-base [repo-path commit-a commit-b]
   (git/with-repo repo-path
-                 (let [walk (git-internal/new-rev-walk repo)
-                       rev-a (.lookupCommit walk (git-internal/resolve-object commit-a repo))
-                       rev-b (.lookupCommit walk (git-internal/resolve-object commit-b repo))]
-                   (doto walk
-                         (.setRevFilter RevFilter/MERGE_BASE)
-                         (.markStart rev-a)
-                         (.markStart rev-b))
-                   (.next walk))))
+    (let [walk (git-internal/new-rev-walk repo)
+          rev-a (.lookupCommit walk (git-internal/resolve-object commit-a repo))
+          rev-b (.lookupCommit walk (git-internal/resolve-object commit-b repo))]
+      (try
+        (doto walk
+          (.setRevFilter RevFilter/MERGE_BASE)
+          (.markStart rev-a)
+          (.markStart rev-b))
+        (.next walk)
+        (finally (close-rev-walk walk))))))
 
 ;@todo refactor this method
 ;@todo get the right person from the git config
 (defn git-merge-notes!
   ([repo-path remote]
     (git/with-repo repo-path
-    
+
     (log "Merging notes")
-    
+
     (let [repository (.getRepository repo)
           notes-local-repo (.getRef repository "refs/notes/cdflow")
           notes-origin-repo (.getRef repository "refs/notes/origin/cdflow")]
@@ -336,33 +394,33 @@
                 base (get-merge-base repo-path commit-local commit-origin)
                 base-note (if base (NoteMap/read reader base) empty)
                 result (.merge merger base-note ours theirs)]
+            (try
+              (cond
+                (= commit-origin base) ;Already Updated
+                  (do
+                    (log "Notes already updated")
+                    true)
+                (= commit-local base) ;Fast forward
+                  (do
+                    (log "Notes fast forward")
+                    (update-ref! repo "refs/notes/cdflow" (.getObjectId notes-origin-repo)))
+                :else
+                  (do
+                    (doto commit-builder
+                      (.setTreeId (.writeTree result inserter))
+                      (.setCommitter person)
+                      (.setAuthor person)
+                      (.setMessage "CDFlow Merge Notes")
+                      (.setParentIds commit-local commit-origin))
 
-            (cond
-              (= commit-origin base) ;Already Updated
-                (do 
-                  (log "Notes already updated") 
-                  true)
-              (= commit-local base) ;Fast forward
-                (do 
-                  (log "Notes fast forward") 
-                  (update-ref! repo "refs/notes/cdflow" (.getObjectId notes-origin-repo)))
-              :else
-                (do
-                  (doto commit-builder
-                    (.setTreeId (.writeTree result inserter))
-                    (.setCommitter person)
-                    (.setAuthor person)
-                    (.setMessage "CDFlow Merge Notes")
-                    (.setParentIds commit-local commit-origin))
+                      (log "Notes merged")
+                      (log (str (subs (.getName commit-local) 0 7) ".." (subs (.getName commit-origin) 0 7)))
 
-                    (log "Notes merged")
-                    (log (str (subs (.getName commit-local) 0 7) ".." (subs (.getName commit-origin) 0 7)))
+                      (update-ref! repo "refs/notes/cdflow" (.insert inserter commit-builder))))
 
-                    (update-ref! repo "refs/notes/cdflow" (.insert inserter commit-builder))))
-
-                (.flush inserter)
-                true
-                )))))
+                  (.flush inserter)
+                  true
+              (finally (close-rev-walk walk))))))))
 
   ([repo-path]
    (git-merge-notes! repo-path "origin")))
@@ -391,27 +449,25 @@
             merge-result (git/git-merge repo parent-commit-id)
             merge-status (.getMergeStatus merge-result)
             merge-success (.isSuccessful merge-status)]
-            
+
             (if merge-success
               (log "Merge completed with success" [:success])
               (log (str "Merge failed wiith status " merge-status) [:error]))
-              
+
              merge-status)))) ;Return the merge status
 
 (defn parent-set! [repo-path branch]
   (if (branch-exists? repo-path branch)
     (git/with-repo repo-path
-      (let [current-branch (git/git-branch-current repo)]
-        (as-> (parse-git-notes repo-path) $
-          (map #(str/split % #"->") $)
-          (map #(map (fn [x] (str/replace (str/trim x) #"\[|\]" "")) %) $)
-          (filter #(not (str/includes? (second %) current-branch)) $)
-          (concat $ [[branch current-branch]])
-          (map #(str/join " -> " %) $)
-          (map #(str "[" % "]") $)
-          (str/join "\n" $)
-          (git-notes-add! repo $ "cdflow" (get-head-commit-object repo)))))
-    (throw (Exception. (str "Branch " branch " doesn't exist!")))))
+      (let [current-branch (git/git-branch-current repo)
+            repository (.getRepository repo)
+            head-commit (get-head-commit-object repo)]
+        (clean-parent-from-notes repo)
+        (as-> (get-commit-note repo (.getName head-commit)) $
+              (conj $ (str "[" branch " -> " current-branch "]"))
+              (str/join "\n" $)
+              (git-notes-add! repo $ "cdflow" head-commit))))
+    (throw (Exception. (str "Branch " branch " doesn't exist in this repository")))))
 
 (defn get-releases-list [repo-path]
   (git/with-repo repo-path
@@ -430,7 +486,7 @@
              (git-checkout-branch! repo-path))))
 
 (defn release-start! [repo-path from to]
-  (let [source (release-name from)
+  (let [source from
         target (release-name to)]
     (if (and (branch-exists? repo-path source) (git-fetch-and-merge-notes! repo-path))
       (git/with-repo repo-path
@@ -439,9 +495,18 @@
         (if (not (branch-exists? repo-path target)) (git/git-branch-create repo target))
         (git-checkout-branch! repo-path target)
         (parent-set! repo-path source)
-        (git-push-notes! repo "cdflow")
+        (git-push-notes! repo-path "cdflow")
         (git-push! repo))
-      (throw (Exception. (str "Branch " source " doesn't exist!"))))))
+      (throw (Exception. (str "Branch " source " doesn't exist in this repository"))))))
+
+(defn get-features-list [repo-path]
+  (git/with-repo repo-path
+    (->>  (branch-list repo-path :all)
+          (filter #(str/includes? % "feature/"))
+          (map #(str/replace % #"refs\/remotes\/origin\/" ""))
+          set
+          (into [])
+          sort)))
 
 (defn feature-checkout! [repo-path name]
   (git/with-repo repo-path

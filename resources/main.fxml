@@ -114,7 +114,7 @@
                            </image>
                         </ImageView>
                      </graphic>
-                  </Button>                
+                  </Button>
               </items>
             </ToolBar>
          </children>
@@ -213,7 +213,7 @@
                 <TableColumn fx:id="commitstableDate" prefWidth="150.0" sortable="false" text="Date" />
               </columns>
             </TableView>
-                <WebView fx:id="webview" prefHeight="900.0" prefWidth="0.0" BorderPane.alignment="CENTER" />
+            <WebView fx:id="webview" prefHeight="900.0" prefWidth="0.0" BorderPane.alignment="CENTER" />
          </items>
       </SplitPane>
    </center>

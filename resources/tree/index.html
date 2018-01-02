@@ -59,21 +59,6 @@ function showTree (commit) {
         root = json;
         root.x0 = h / 2;
         root.y0 = 0;
-
-        function toggleAll(d) {
-            if (d.children) {
-                d.children.forEach(toggleAll);
-                toggle(d);
-            }
-        }
-
-        // Initialize the display to show a few nodes.
-//   root.children.forEach(toggleAll);
-//   toggle(root.children[1]);
-//   toggle(root.children[1].children[2]);
-//   toggle(root.children[9]);
-//   toggle(root.children[9].children[0]);
-
         update(root);
     });
 
@@ -94,7 +79,12 @@ function showTree (commit) {
         var nodeEnter = node.enter().append("svg:g")
             .attr("class", "node")
             .attr("transform", function(d) { return "translate(" + source.y0 + "," + source.x0 + ")"; })
-            .on("click", function(d) { toggle(d); update(d); });
+            .on("click", function(d) {
+                // console.log(d)
+                if (d['commit-id']) {
+                    showCommitInBranches(d['commit-id'])
+                }
+            });
 
         nodeEnter.append("svg:circle")
             .attr("r", 1e-6)
@@ -168,17 +158,6 @@ function showTree (commit) {
             d.x0 = d.x;
             d.y0 = d.y;
         });
-    }
-
-// Toggle children.
-    function toggle(d) {
-        if (d.children) {
-            d._children = d.children;
-            d.children = null;
-        } else {
-            d.children = d._children;
-            d._children = null;
-        }
     }
 }
 showTree();

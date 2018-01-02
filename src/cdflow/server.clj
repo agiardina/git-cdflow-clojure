@@ -16,6 +16,7 @@
              "Access-Control-Allow-Origin" "*"}
    :body (-> (state/get-repository)
              (git/notes->tree)
+             (git/decorate-tree-with-commit-id (state/get-repository))
              (json/write-str))})
 
 (defn get-tree-commit [req]
@@ -26,7 +27,7 @@
                commit (-> req :params :id)
                branches-with-commit
                 (git/branch-list-contains repo-path commit)
-               tree (git/notes->tree repo-path)
+               tree (git/decorate-tree-with-commit-id (git/notes->tree repo-path) repo-path)
                add-el (fn  [node] (if (and (map? node) (some #(string/includes? % (:name node))branches-with-commit)) (assoc node :active "1") node))
                tree-highlight (postwalk add-el tree)]
            (json/write-str tree-highlight))})
